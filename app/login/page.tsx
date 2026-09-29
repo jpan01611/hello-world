@@ -13,6 +13,9 @@ export default function LoginPage() {
             provider: 'google',
             options: {
                 redirectTo: `${window.location.origin}/auth/callback`,
+                // Force Google's account picker to show every time, even if
+                // the browser already has a single active Google session.
+                queryParams: { prompt: 'select_account' },
             },
         });
     }

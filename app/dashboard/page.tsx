@@ -20,6 +20,9 @@ export default async function DashboardPage() {
     return (
         <div className="flex flex-1 flex-col items-center justify-center gap-6 bg-zinc-50 px-6 font-sans dark:bg-black">
             <div className="w-full max-w-sm text-center sm:text-left">
+                <Link href="/" className="mb-4 inline-block text-sm text-blue-600 underline">
+                    ← Back to home
+                </Link>
                 <h1 className="mb-2 text-2xl font-semibold text-black dark:text-zinc-50">
                     Dashboard
                 </h1>

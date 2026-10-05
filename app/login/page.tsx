@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
-    const [loading, setLoading] = useState(false);
     const supabase = createClient();
 
-    async function login() {
-        setLoading(true);
+    const [googleLoading, setGoogleLoading] = useState(false);
+
+    async function loginWithGoogle() {
+        setGoogleLoading(true);
         await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
@@ -22,16 +23,19 @@ export default function LoginPage() {
 
     return (
         <div className="flex flex-1 flex-col items-center justify-center gap-6 bg-zinc-50 px-6 font-sans dark:bg-black">
-            <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-                Sign in
-            </h1>
-            <button
-                onClick={login}
-                disabled={loading}
-                className="flex h-12 items-center justify-center rounded-full bg-foreground px-6 text-background transition-colors hover:bg-[#383838] disabled:opacity-60 dark:hover:bg-[#ccc]"
-            >
-                {loading ? 'Redirecting…' : 'Continue with Google'}
-            </button>
+            <div className="w-full max-w-sm">
+                <h1 className="mb-6 text-center text-2xl font-semibold text-black dark:text-zinc-50">
+                    Sign in
+                </h1>
+
+                <button
+                    onClick={loginWithGoogle}
+                    disabled={googleLoading}
+                    className="h-11 w-full rounded-full border border-black/15 text-black transition-colors hover:bg-black/5 disabled:opacity-60 dark:border-white/20 dark:text-zinc-50 dark:hover:bg-white/10"
+                >
+                    {googleLoading ? 'Redirecting…' : 'Continue with Google'}
+                </button>
+            </div>
         </div>
     );
 }

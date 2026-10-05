@@ -24,3 +24,42 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Tailwind v4's Preflight resets <button> cursor to the browser default
+   instead of pointer. Restore pointer on all clickable controls so hover
+   affordance is consistent, unless explicitly disabled. */
+button:not(:disabled),
+[role='button']:not(:disabled),
+a,
+summary {
+  cursor: pointer;
+}
+
+button:disabled,
+[role='button']:disabled {
+  cursor: not-allowed;
+}
+
+/* Give every clickable control an immediate pressed-state so clicks feel
+   responsive instead of inert. Darkens light backgrounds and brightens
+   dark/transparent ones, plus a slight scale-down, on :active. */
+button:not(:disabled),
+[role='button']:not(:disabled),
+.pressable {
+  transition: filter 100ms ease, transform 100ms ease;
+}
+
+button:not(:disabled):active,
+[role='button']:not(:disabled):active,
+.pressable:active {
+  filter: brightness(0.85);
+  transform: scale(0.97);
+}
+
+@media (prefers-color-scheme: dark) {
+  button:not(:disabled):active,
+  [role='button']:not(:disabled):active,
+  .pressable:active {
+    filter: brightness(1.3);
+  }
+}

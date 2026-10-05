@@ -1,26 +1,36 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 
-const AVATAR_BUCKET = 'avatars';
+const AVATARS_BUCKET = 'avatars';
+
+// Only avatars hosted in our own Supabase Storage bucket (allowlisted in
+// next.config.ts) can go through next/image's optimizer.
+const SUPABASE_STORAGE_PREFIX = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/`
+    : null;
 
 export default function ProfilePage() {
     const router = useRouter();
     const supabase = createClient();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [userId, setUserId] = useState<string | null>(null);
     const [email, setEmail] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-    const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const [signingOut, setSigningOut] = useState(false);
     const [checking, setChecking] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [avatarError, setAvatarError] = useState<string | null>(null);
 
     useEffect(() => {
         async function load() {
@@ -47,6 +57,47 @@ export default function ProfilePage() {
         load();
     }, [router, supabase]);
 
+    async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+
+        if (!file || !userId) return;
+
+        setAvatarError(null);
+        setUploadingAvatar(true);
+
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${userId}-${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from(AVATARS_BUCKET)
+            .upload(fileName, file);
+
+        if (uploadError) {
+            setUploadingAvatar(false);
+            setAvatarError(uploadError.message);
+            return;
+        }
+
+        const { data: urlData } = supabase.storage
+            .from(AVATARS_BUCKET)
+            .getPublicUrl(fileName);
+
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ avatar_url: urlData.publicUrl })
+            .eq('id', userId);
+
+        setUploadingAvatar(false);
+
+        if (updateError) {
+            setAvatarError(updateError.message);
+            return;
+        }
+
+        setAvatarUrl(urlData.publicUrl);
+    }
+
     async function handleSubmit(e: FormEvent) {
         e.preventDefault();
         setError(null);
@@ -58,37 +109,11 @@ export default function ProfilePage() {
             return;
         }
 
-        let newAvatarUrl = avatarUrl;
-
-        // Upload the photo to Supabase Storage and keep only the public URL
-        // in the database - never store the binary image data in a table.
-        if (avatarFile) {
-            const fileExt = avatarFile.name.split('.').pop();
-            const filePath = `${userId}/avatar-${Date.now()}.${fileExt}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from(AVATAR_BUCKET)
-                .upload(filePath, avatarFile, { upsert: true });
-
-            if (uploadError) {
-                setError(uploadError.message);
-                setLoading(false);
-                return;
-            }
-
-            const { data: publicUrlData } = supabase.storage
-                .from(AVATAR_BUCKET)
-                .getPublicUrl(filePath);
-
-            newAvatarUrl = publicUrlData.publicUrl;
-        }
-
         const { error: updateError } = await supabase
             .from('profiles')
             .update({
                 first_name: firstName.trim(),
                 last_name: lastName.trim(),
-                avatar_url: newAvatarUrl,
             })
             .eq('id', userId);
 
@@ -99,13 +124,13 @@ export default function ProfilePage() {
             return;
         }
 
-        setAvatarUrl(newAvatarUrl);
-        setAvatarFile(null);
         setSuccess('Profile updated!');
         router.refresh();
     }
 
     async function handleSignOut() {
+        if (signingOut) return;
+        setSigningOut(true);
         await supabase.auth.signOut();
         router.replace('/login');
         router.refresh();
@@ -132,26 +157,43 @@ export default function ProfilePage() {
                     {email}
                 </p>
 
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                    <div className="flex items-center gap-4">
-                        {avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                                src={avatarUrl}
-                                alt="Profile photo"
-                                className="h-16 w-16 rounded-full object-cover"
-                            />
-                        ) : (
-                            <div className="h-16 w-16 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-                        )}
+                <div className="mb-6 flex items-center gap-4">
+                    {avatarUrl ? (
+                        <Image
+                            src={avatarUrl}
+                            alt="Your avatar"
+                            width={64}
+                            height={64}
+                            unoptimized={!(SUPABASE_STORAGE_PREFIX !== null && avatarUrl.startsWith(SUPABASE_STORAGE_PREFIX))}
+                            className="h-16 w-16 rounded-full object-cover"
+                        />
+                    ) : (
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-200 text-lg font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                            {(firstName[0] ?? email[0] ?? '?').toUpperCase()}
+                        </div>
+                    )}
+
+                    <div className="flex flex-col gap-1">
                         <input
+                            ref={fileInputRef}
                             type="file"
                             accept="image/*"
-                            onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
-                            className="text-sm text-black dark:text-zinc-50"
+                            onChange={handleAvatarChange}
+                            className="hidden"
                         />
+                        <button
+                            type="button"
+                            disabled={uploadingAvatar}
+                            onClick={() => fileInputRef.current?.click()}
+                            className="rounded-full border border-black/15 px-4 py-1.5 text-xs text-black transition-colors hover:bg-black/5 disabled:opacity-60 dark:border-white/20 dark:text-zinc-50 dark:hover:bg-white/10"
+                        >
+                            {uploadingAvatar ? 'Uploading…' : 'Change photo'}
+                        </button>
+                        {avatarError && <p className="text-xs text-red-600">{avatarError}</p>}
                     </div>
+                </div>
 
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <label className="flex flex-col gap-1 text-sm text-black dark:text-zinc-50">
                         First name
                         <input
@@ -186,9 +228,10 @@ export default function ProfilePage() {
                     <button
                         type="button"
                         onClick={handleSignOut}
-                        className="h-11 rounded-full border border-black/15 text-black transition-colors hover:bg-black/5 dark:border-white/20 dark:text-zinc-50 dark:hover:bg-white/10"
+                        disabled={signingOut}
+                        className="h-11 rounded-full border border-black/15 text-black transition-colors hover:bg-black/5 disabled:opacity-60 dark:border-white/20 dark:text-zinc-50 dark:hover:bg-white/10"
                     >
-                        Sign out
+                        {signingOut ? 'Signing out…' : 'Sign out'}
                     </button>
                 </form>
             </div>

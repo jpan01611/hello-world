@@ -53,6 +53,9 @@ export default async function Home() {
               <Link href="/profile" className="text-blue-600 underline">
                 Profile
               </Link>
+              <Link href="/gallery" className="text-blue-600 underline">
+                Gallery
+              </Link>
             </div>
           </div>
 

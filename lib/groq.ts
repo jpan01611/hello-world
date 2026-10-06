@@ -1,29 +1,5 @@
 import OpenAI from 'openai';
 
-// Groq's API is OpenAI-compatible, so the `openai` SDK works against it by
-// just overriding the base URL. Free tier, server-side only (relies on
-// GROQ_API_KEY, which is not exposed to the browser since it has no
-// NEXT_PUBLIC_ prefix).
-const groqClient = new OpenAI({
-    apiKey: process.env.GROQ_API_KEY,
-    baseURL: 'https://api.groq.com/openai/v1',
-});
-
-// OpenRouter is used as a fallback when Groq is unavailable (rate-limited,
-// out of quota, etc.) — also OpenAI-compatible, also free-tier, server-side
-// only (OPENROUTER_API_KEY).
-const openRouterClient = new OpenAI({
-    apiKey: process.env.OPENROUTER_API_KEY,
-    baseURL: 'https://openrouter.ai/api/v1',
-});
-
-// Hugging Face's router is the final fallback — also OpenAI-compatible,
-// also free-tier, server-side only (HUGGINGFACE_API_KEY).
-const huggingFaceClient = new OpenAI({
-    apiKey: process.env.HUGGINGFACE_API_KEY,
-    baseURL: 'https://router.huggingface.co/v1',
-});
-
 const VISION_MODEL = 'qwen/qwen3.8-27b';
 const TEXT_MODEL = 'openai/gpt-oss-20b';
 
@@ -33,7 +9,42 @@ const OPENROUTER_TEXT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
 const HUGGINGFACE_VISION_MODEL = 'Qwen/Qwen3-VL-30B-A3B-Instruct';
 const HUGGINGFACE_TEXT_MODEL = 'meta-llama/Llama-3.1-8B-Instruct';
 
-type Provider = { client: OpenAI; model: string; name: string };
+type Provider = {
+    name: string;
+    keyEnv: string;
+    baseURL: string;
+    visionModel: string;
+    textModel: string;
+};
+
+const providers: Provider[] = [
+    {
+        name: 'Groq', keyEnv: 'GROQ_API_KEY',
+        baseURL: 'https://api.groq.com/openai/v1',
+        visionModel: VISION_MODEL, textModel: TEXT_MODEL,
+    },
+    {
+        name: 'OpenRouter', keyEnv: 'OPENROUTER_API_KEY',
+        baseURL: 'https://openrouter.ai/api/v1',
+        visionModel: OPENROUTER_VISION_MODEL, textModel: OPENROUTER_TEXT_MODEL,
+    },
+    {
+        name: 'Hugging Face', keyEnv: 'HUGGINGFACE_API_KEY',
+        baseURL: 'https://router.huggingface.co/v1',
+        visionModel: HUGGINGFACE_VISION_MODEL, textModel: HUGGINGFACE_TEXT_MODEL,
+    },
+];
+
+const clients = new Map<string, OpenAI>();
+
+function getClient(provider: Provider, apiKey: string): OpenAI {
+    let client = clients.get(provider.name);
+    if (!client) {
+        client = new OpenAI({ apiKey, baseURL: provider.baseURL });
+        clients.set(provider.name, client);
+    }
+    return client;
+}
 
 // The literal instruction sent to the vision model. Exported shape so the
 // caller can persist the exact prompt alongside the generated media.
@@ -53,15 +64,19 @@ function buildCaptionPrompt(description: string): string {
 // Tries each provider in order, returning the first successful non-empty
 // response. Only throws once every provider has failed.
 async function chatWithFallback(
-    providers: Provider[],
+    stage: 'visionModel' | 'textModel',
     messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
     maxTokens: number,
 ): Promise<string> {
     let lastError: unknown;
+    let configuredProviders = 0;
     for (const provider of providers) {
+        const apiKey = process.env[provider.keyEnv]?.trim();
+        if (!apiKey) continue;
+        configuredProviders++;
         try {
-            const result = await provider.client.chat.completions.create({
-                model: provider.model,
+            const result = await getClient(provider, apiKey).chat.completions.create({
+                model: provider[stage],
                 max_tokens: maxTokens,
                 messages,
             });
@@ -69,11 +84,16 @@ async function chatWithFallback(
             if (content) {
                 return content;
             }
-            lastError = new Error(`${provider.name} returned an empty response`);
+            throw new Error(`${provider.name} returned an empty response`);
         } catch (err) {
             console.error(`${provider.name} call failed, trying next provider:`, err);
             lastError = err;
         }
+    }
+    if (configuredProviders === 0) {
+        const error = new Error('No AI provider is configured. Set GROQ_API_KEY, OPENROUTER_API_KEY, or HUGGINGFACE_API_KEY.');
+        console.error(error.message);
+        throw error;
     }
     throw lastError instanceof Error ? lastError : new Error('All providers failed');
 }
@@ -97,11 +117,7 @@ export async function generateDescription(
     ];
 
     const description = await chatWithFallback(
-        [
-            { client: groqClient, model: VISION_MODEL, name: 'Groq' },
-            { client: openRouterClient, model: OPENROUTER_VISION_MODEL, name: 'OpenRouter' },
-            { client: huggingFaceClient, model: HUGGINGFACE_VISION_MODEL, name: 'Hugging Face' },
-        ],
+        'visionModel',
         messages,
         300,
     );
@@ -122,11 +138,7 @@ export async function generateFunnyCaption(
     ];
 
     const caption = await chatWithFallback(
-        [
-            { client: groqClient, model: TEXT_MODEL, name: 'Groq' },
-            { client: openRouterClient, model: OPENROUTER_TEXT_MODEL, name: 'OpenRouter' },
-            { client: huggingFaceClient, model: HUGGINGFACE_TEXT_MODEL, name: 'Hugging Face' },
-        ],
+        'textModel',
         messages,
         150,
     );

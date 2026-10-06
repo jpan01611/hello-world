@@ -12,7 +12,6 @@ type ImageRow = {
     created_at: string;
     captions: {
         id: string;
-        description: string;
         caption: string;
         created_at: string;
         votes: { user_id: string; value: number }[];
@@ -46,7 +45,7 @@ export default async function Home() {
     // position stays stable regardless of vote changes.
     const { data: images, error: imageError } = user ? await supabase
         .from('images')
-        .select('id, created_by, image_url, created_at, captions(id, description, caption, created_at, votes(user_id, value))')
+        .select('id, created_by, image_url, created_at, captions(id, caption, created_at, votes(user_id, value))')
         .order('created_at', { foreignTable: 'captions', ascending: true })
         .order('created_at', { ascending: false }) : { data: null, error: null };
     const error = publicFeed?.error ?? imageError;

@@ -18,8 +18,11 @@ HUGGINGFACE_API_KEY=<huggingface-key>   # fallback
 ```
 
 The two Supabase values come from your project's **API settings**. The AI
-fallback keys are optional but recommended — if one provider is rate-limited or
-down, the next is tried.
+keys are server-only. At least one provider key is required; unconfigured
+providers are skipped. Configured providers are tried in Groq, OpenRouter,
+then Hugging Face order. Adding fallback keys is recommended for outages or
+rate limits. Clients are initialized only when needed and reused; missing
+fallback keys no longer prevent the app from loading.
 
 ## Supabase setup
 

@@ -12,7 +12,6 @@ type Vote = {
 
 type Caption = {
     id: string;
-    description: string;
     caption: string;
     created_at: string;
     votes: Vote[];
@@ -91,9 +90,8 @@ function VoteControls({
 // without moving position.
 export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdBy }: ImageCardProps) {
     const [isGenerating, startGenerateTransition] = useTransition();
-    const [, startVoteTransition] = useTransition();
+    const [isVoting, startVoteTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
-    const [votingId, setVotingId] = useState<string | null>(null);
     const [showAllCaptions, setShowAllCaptions] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, startSaveTransition] = useTransition();
@@ -159,22 +157,20 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
     }
 
     function handleVote(captionId: string, value: 1 | -1) {
+        if (isVoting) return;
         setError(null);
-        setVotingId(captionId);
         startVoteTransition(async () => {
             applyOptimisticVote({ captionId, value, userId: currentUserId });
             try {
                 await voteOnCaptionAction(captionId, value);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to vote');
-            } finally {
-                setVotingId(null);
             }
         });
     }
 
     const scores = optimisticCaptions.map((c) => netVotes(c));
-    const topScore = scores.length > 0 ? Math.max(...scores) : null;
+    const topScore = scores.reduce<number | null>((best, score) => best === null || score > best ? score : best, null);
     const topScoreCount = scores.filter((s) => s === topScore).length;
     // Only label a caption "Top caption" when there's a unique leader among
     // 2+ captions — a tie (including all-zero) means no caption stands out.
@@ -187,9 +183,9 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
         ? -1
         : optimisticCaptions.reduce((bestIdx, c, i) => {
             const best = optimisticCaptions[bestIdx];
-            if (netVotes(c) > netVotes(best)) return i;
-            if (netVotes(c) === netVotes(best) && c.created_at > best.created_at) return i;
-            if (netVotes(c) === netVotes(best) && c.created_at === best.created_at && c.id > best.id) return i;
+            if (scores[i] > scores[bestIdx]) return i;
+            if (scores[i] === scores[bestIdx] && c.created_at > best.created_at) return i;
+            if (scores[i] === scores[bestIdx] && c.created_at === best.created_at && c.id > best.id) return i;
             return bestIdx;
         }, 0);
     const otherCaptions = optimisticCaptions.filter((_, i) => i !== featuredIndex);
@@ -204,7 +200,7 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
                     <VoteControls
                         caption={c}
                         currentUserId={currentUserId}
-                        pending={votingId === c.id}
+                        pending={isVoting}
                         onVote={handleVote}
                     />
                     {hasUniqueTop && netVotes(c) === topScore && (

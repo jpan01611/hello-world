@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "funfunfunsahur | The caption lodge",
+  title: "FunFunFunSahur",
   description: "Drop a photo, let AI bring the punchline, and vote with the crowd.",
 };
 

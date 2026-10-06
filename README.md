@@ -5,7 +5,7 @@ it, and vote on everyone's captions in a shared gallery feed. Built with
 Next.js 16 (App Router) and Supabase.
 
 Originally bootstrapped from `create-next-app` as a course project (see
-[`REQUIREMENTS.md`](./REQUIREMENTS.md) for the HW1→HW3 assignment scope) and
+[`REQUIREMENTS.md`](./REQUIREMENTS.md) for the HW1→HW4 assignment scope) and
 extended into the current app.
 
 Previously called Crackd, the app now uses a woodpunk/neon caption-lodge
@@ -40,6 +40,8 @@ post permissions are unchanged by the redesign.
   across three OpenAI-compatible providers (Groq → OpenRouter → Hugging Face).
   The exact prompts used for both steps are saved alongside each caption,
   but are not displayed or fetched by the feed UI.
+  Only configured providers are initialized, on demand, and their clients
+  are reused across calls.
 - **Voting** — up/down vote captions with optimistic UI; votes toggle/flip
   atomically server-side. The top-rated caption is highlighted in place. Voting
   is restricted to logged-in users at both the server-action and database

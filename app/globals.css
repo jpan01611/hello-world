@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6edda;
+  --foreground: #302017;
+  --walnut: #493024;
+  --ember: #ff8a48;
+  --lime: #dbf575;
 }
 
 @theme inline {
@@ -12,17 +15,56 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
+  background-image: repeating-linear-gradient(4deg, transparent 0 30px, #704a2210 31px, transparent 33px);
+}
+
+.sahur-page { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem 4rem; }
+.sahur-panel { background: #fff9ec; border: 2px solid var(--walnut); border-radius: 1.5rem 1.1rem 1.5rem 1.2rem; padding: 1.75rem; box-shadow: 5px 6px 0 #49302424; }
+.sahur-eyebrow { font-size: .7rem; letter-spacing: .16em; text-transform: uppercase; font-weight: 850; color: #71523c; }
+.sahur-logo { display: flex; align-items: center; gap: .7rem; }
+.sahur-logo-seal {
+  display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0;
+  font-family: Papyrus, fantasy; font-size: 2rem; font-weight: bold;
+  color: #fff9ec; background: #493024; border: 2px solid #302017;
+  border-radius: 45% 55% 42% 58%; transform: rotate(-8deg);
+  box-shadow: 3px 3px 0 #dbf575;
+}
+.sahur-logo-wordmark {
+  display: flex; align-items: baseline; font-family: Papyrus, fantasy;
+  font-size: clamp(1.35rem, 4vw, 1.9rem); font-weight: bold; line-height: 1.3;
+  color: #493024; text-shadow: 1px 1px 0 #fff9ec;
+}
+.sahur-logo-wordmark > span:nth-child(2) { transform: translateY(-2px) rotate(-3deg); }
+.sahur-logo-wordmark > span:nth-child(3) { transform: translateY(1px) rotate(2deg); }
+.sahur-logo-ending { color: #8d301a; border-bottom: 3px solid #dbf575; border-radius: 0 0 40% 20%; }
+.sahur-logo-caption { display: block; font-size: .6rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: #71523c; }
+.sahur-button, .sahur-button-secondary, .sahur-button-ghost {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  min-height: 44px; padding: .65rem 1rem; border: 2px solid var(--walnut);
+  border-radius: .85rem; font-size: .85rem; font-weight: 750; text-decoration: none;
+  line-height: 1.3; transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+.sahur-button { background: var(--ember); color: #302017; box-shadow: 0 3px 0 var(--walnut); }
+.sahur-button-secondary { background: #fff9ec; color: #302017; box-shadow: 0 3px 0 #49302450; }
+.sahur-button-ghost { background: #eadcc4; color: #493024; border-color: transparent; }
+.sahur-button:not(:disabled):hover, .sahur-button-secondary:not(:disabled):hover { transform: translateY(-2px) rotate(-1deg); box-shadow: 0 5px 0 var(--walnut); }
+.sahur-button-ghost:not(:disabled):hover { background: #dbc5a5; }
+button:disabled { opacity: .55; }
+.sahur-input { width: 100%; border: 2px solid #bda487; border-radius: .8rem; background: #fffdf7; color: #302017; padding: .7rem .85rem; font-size: .9rem; }
+input[type='file']::file-selector-button { background: #eadcc4; color: #493024; border: 1px solid #bda487; border-radius: .6rem; padding: .5rem .65rem; margin-right: .5rem; font-weight: 700; }
+:where(a, button, input, summary, select):focus-visible { outline: 3px solid #31715e; outline-offset: 4px; }
+.sahur-post { background: #fff9ec; border: 2px solid #493024; border-radius: 1.2rem; padding: .6rem; box-shadow: 4px 5px 0 #49302426; overflow: hidden; }
+.sahur-tag { display: inline-flex; border-radius: .5rem; padding: .25rem .5rem; font-size: .65rem; font-weight: 800; background: var(--lime); color: #302017; }
+.sahur-vote { height: 44px; width: 44px; border: 1px solid #bda487; border-radius: .75rem; background: #eadcc4; color: #493024; }
+.sahur-vote[aria-pressed='true'] { background: var(--lime); border-color: #493024; box-shadow: 0 2px 0 #493024; }
+.sahur-loading { animation: drumbeat 1.2s ease-in-out infinite; }
+@keyframes drumbeat { 0%, 50%, 100% { opacity: 1; } 15%, 35%, 65% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
 /* Tailwind v4's Preflight resets <button> cursor to the browser default
@@ -31,12 +73,19 @@ body {
 button:not(:disabled),
 [role='button']:not(:disabled),
 a,
-summary {
+summary,
+select:not(:disabled),
+input:is([type='button'], [type='submit'], [type='reset'], [type='checkbox'], [type='radio'], [type='file']):not(:disabled),
+input[type='file']:not(:disabled)::file-selector-button {
   cursor: pointer;
 }
 
 button:disabled,
-[role='button']:disabled {
+[role='button']:disabled,
+[role='button'][aria-disabled='true'],
+select:disabled,
+input:disabled,
+input[type='file']:disabled::file-selector-button {
   cursor: not-allowed;
 }
 

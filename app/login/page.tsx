@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
@@ -22,19 +23,31 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 bg-zinc-50 px-6 font-sans dark:bg-black">
-            <div className="w-full max-w-sm">
-                <h1 className="mb-6 text-center text-2xl font-semibold text-black dark:text-zinc-50">
-                    Sign in
-                </h1>
+        <div className="sahur-page flex flex-1 flex-col items-center justify-center px-5 py-12">
+            <div className="w-full max-w-lg">
+                <Link href="/" className="sahur-button-ghost mb-6 inline-flex">
+                    ← Back to the lodge
+                </Link>
+                <section className="sahur-panel p-6 sm:p-9">
+                    <span className="sahur-eyebrow">Members of the meme lodge</span>
+                    <h1 className="mb-4 mt-3 text-4xl font-black tracking-tight sm:text-5xl">
+                        Come on in.
+                    </h1>
+                    <p className="mb-8 text-base leading-relaxed">
+                        A cozy corner for your funniest finds. Sign in to drop a photo and join the good chaos.
+                    </p>
 
-                <button
-                    onClick={loginWithGoogle}
-                    disabled={googleLoading}
-                    className="h-11 w-full rounded-full border border-black/15 text-black transition-colors hover:bg-black/5 disabled:opacity-60 dark:border-white/20 dark:text-zinc-50 dark:hover:bg-white/10"
-                >
-                    {googleLoading ? 'Redirecting…' : 'Continue with Google'}
-                </button>
+                    <button
+                        onClick={loginWithGoogle}
+                        disabled={googleLoading}
+                        className="sahur-button min-h-12 w-full disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {googleLoading ? 'Redirecting…' : 'Continue with Google'}
+                    </button>
+                    <p className="mt-5 text-sm leading-relaxed">
+                        First visit? Continuing with Google creates your account.
+                    </p>
+                </section>
             </div>
         </div>
     );

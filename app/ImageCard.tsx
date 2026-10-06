@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useOptimistic, useState, useTransition } from 'react';
-import { generateCaptionAction, voteOnCaptionAction } from './actions';
+import { deleteImageAction, generateCaptionAction, updateImageAction, voteOnCaptionAction } from './actions';
 
 // Only photos hosted in our own Supabase Storage bucket (allowlisted in
 // next.config.ts) can go through next/image's optimizer. Arbitrary
@@ -21,6 +21,8 @@ type Caption = {
     id: string;
     description: string;
     caption: string;
+    vision_prompt: string | null;
+    caption_prompt: string | null;
     created_at: string;
     votes: Vote[];
 };
@@ -30,6 +32,7 @@ type ImageCardProps = {
     imageUrl: string;
     captions: Caption[];
     currentUserId: string;
+    createdBy: string;
 };
 
 type VoteAction = {
@@ -68,15 +71,12 @@ function VoteControls({
                 onClick={() => onVote(caption.id, 1)}
                 disabled={pending}
                 aria-label="Upvote"
-                className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors disabled:opacity-60 ${
-                    mine === 1
-                        ? 'bg-orange-500 text-white'
-                        : 'text-zinc-500 hover:bg-black/5 dark:text-zinc-400 dark:hover:bg-white/10'
-                }`}
+                aria-pressed={mine === 1}
+                className="sahur-vote"
             >
                 ▲
             </button>
-            <span className="min-w-5 text-center font-semibold text-black dark:text-zinc-50">
+            <span className="min-w-8 text-center font-black" aria-live="polite">
                 {score}
             </span>
             <button
@@ -84,11 +84,8 @@ function VoteControls({
                 onClick={() => onVote(caption.id, -1)}
                 disabled={pending}
                 aria-label="Downvote"
-                className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors disabled:opacity-60 ${
-                    mine === -1
-                        ? 'bg-blue-500 text-white'
-                        : 'text-zinc-500 hover:bg-black/5 dark:text-zinc-400 dark:hover:bg-white/10'
-                }`}
+                aria-pressed={mine === -1}
+                className="sahur-vote"
             >
                 ▼
             </button>
@@ -101,12 +98,39 @@ function VoteControls({
 // captions to visually "jump" between a special top slot and a collapsed
 // list). The highest-voted caption is labelled "Top caption" in place,
 // without moving position.
-export function ImageCard({ imageId, imageUrl, captions, currentUserId }: ImageCardProps) {
+export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdBy }: ImageCardProps) {
     const [isGenerating, startGenerateTransition] = useTransition();
     const [, startVoteTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
     const [votingId, setVotingId] = useState<string | null>(null);
     const [showAllCaptions, setShowAllCaptions] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, startSaveTransition] = useTransition();
+    const isOwner = currentUserId === createdBy;
+
+    function handleUpdate(formData: FormData) {
+        setError(null);
+        startSaveTransition(async () => {
+            try {
+                await updateImageAction(imageId, formData);
+                setIsEditing(false);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to update post');
+            }
+        });
+    }
+
+    function handleDelete() {
+        if (!window.confirm('Delete this post and all its captions and votes?')) return;
+        setError(null);
+        startSaveTransition(async () => {
+            try {
+                await deleteImageAction(imageId);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to delete post');
+            }
+        });
+    }
 
     // Mirrors the server's toggle_vote logic locally so the score/highlight
     // flips the instant you click, instead of waiting on the full round
@@ -130,7 +154,7 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId }: ImageC
         setError(null);
         startGenerateTransition(async () => {
             try {
-                await generateCaptionAction(imageId, imageUrl);
+                await generateCaptionAction(imageId);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to generate caption');
             }
@@ -168,6 +192,7 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId }: ImageC
             const best = optimisticCaptions[bestIdx];
             if (netVotes(c) > netVotes(best)) return i;
             if (netVotes(c) === netVotes(best) && c.created_at > best.created_at) return i;
+            if (netVotes(c) === netVotes(best) && c.created_at === best.created_at && c.id > best.id) return i;
             return bestIdx;
         }, 0);
     const otherCaptions = optimisticCaptions.filter((_, i) => i !== featuredIndex);
@@ -175,8 +200,8 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId }: ImageC
 
     function renderCaption(c: Caption) {
         return (
-            <li key={`${imageId}-${c.id}`} className="flex flex-col gap-1 border-t border-black/5 pt-2 first:border-t-0 first:pt-0 dark:border-white/10">
-                <p className="text-sm font-semibold text-black dark:text-zinc-50">
+            <li key={`${imageId}-${c.id}`} className="flex flex-col gap-3 border-t-2 border-dashed border-[#dbc5a5] pt-4 first:border-t-0 first:pt-0">
+                <p className="text-base font-bold leading-relaxed">
                     {c.caption}
                 </p>
                 <div className="flex items-center justify-between">
@@ -187,44 +212,84 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId }: ImageC
                         onVote={handleVote}
                     />
                     {hasUniqueTop && netVotes(c) === topScore && (
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                            Top caption
+                        <span className="sahur-tag">
+                            Crowd pick
                         </span>
                     )}
                 </div>
+                {(c.caption_prompt || c.vision_prompt) && (
+                    <details className="mt-1 text-xs text-[#71523c]">
+                        <summary className="sahur-button-ghost select-none">Behind the punchline</summary>
+                        <div className="mt-2 flex flex-col gap-3 rounded-xl bg-[#eadcc4] p-3">
+                            {c.vision_prompt && (
+                                <div>
+                                    <p className="font-bold">Vision prompt</p>
+                                    <p className="whitespace-pre-wrap break-words">{c.vision_prompt}</p>
+                                </div>
+                            )}
+                            {c.caption_prompt && (
+                                <div>
+                                    <p className="font-bold">Caption prompt</p>
+                                    <p className="whitespace-pre-wrap break-words">{c.caption_prompt}</p>
+                                </div>
+                            )}
+                        </div>
+                    </details>
+                )}
             </li>
         );
     }
 
     return (
-        <div className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-lg dark:bg-zinc-900 dark:ring-white/10">
-            <div className="relative aspect-square w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+        <article className="sahur-post group flex flex-col">
+            <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#eadcc4]">
                 <Image
                     src={imageUrl}
                     alt="Uploaded"
                     fill
                     unoptimized={!isOptimizableImage}
                     loading="lazy"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    sizes="(max-width: 460px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                 />
             </div>
 
-            <div className="flex flex-col gap-2 p-3">
-                <button
+            <div className="flex flex-col gap-4 p-3">
+                <p className="sahur-eyebrow">{isOwner ? 'Your photo. Your chaos.' : 'AI wrote it. You judge it.'}</p>
+                {isOwner && <button
                     type="button"
                     onClick={handleGenerateCaption}
                     disabled={isGenerating}
-                    className="h-8 rounded-full border border-black/15 text-xs font-medium text-black transition-colors hover:bg-black/5 disabled:opacity-60 dark:border-white/20 dark:text-zinc-50 dark:hover:bg-white/10"
+                    className={`sahur-button w-full ${isGenerating ? 'sahur-loading' : ''}`}
                 >
                     {isGenerating
                         ? 'Generating…'
                         : optimisticCaptions.length > 0
                             ? 'Generate another caption'
                             : 'Generate Caption'}
-                </button>
+                </button>}
 
-                {error && <p className="text-xs text-red-600">{error}</p>}
+                {isOwner && (
+                    <div className="flex flex-col gap-2 text-xs">
+                        <div className="flex flex-wrap gap-2">
+                            <button type="button" className="sahur-button-ghost" aria-expanded={isEditing} disabled={isSaving} onClick={() => setIsEditing(!isEditing)}>{isEditing ? 'Cancel edit' : 'Edit post'}</button>
+                            <button type="button" disabled={isSaving} onClick={handleDelete} className="sahur-button-ghost">Delete post</button>
+                        </div>
+                        {isEditing && (
+                            <form action={handleUpdate} className="flex flex-col gap-3 rounded-xl bg-[#eadcc4] p-3">
+                                <label>Replace with a photo
+                                    <input type="file" name="file" accept="image/*" className="mt-1 w-full" />
+                                </label>
+                                <label>Or use an image URL
+                                    <input type="url" name="imageUrl" placeholder={imageUrl} className="sahur-input mt-1" />
+                                </label>
+                                <button type="submit" className="sahur-button-secondary" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save photo'}</button>
+                            </form>
+                        )}
+                    </div>
+                )}
+
+                {error && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{error}</p>}
 
                 {optimisticCaptions.length > 0 && (
                     <ul className="flex flex-col gap-2">
@@ -236,8 +301,9 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId }: ImageC
                 {otherCaptions.length > 0 && (
                     <button
                         type="button"
+                        aria-expanded={showAllCaptions}
                         onClick={() => setShowAllCaptions((v) => !v)}
-                        className="self-start text-xs font-medium text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                        className="sahur-button-secondary w-full"
                     >
                         {showAllCaptions
                             ? 'Hide other captions'
@@ -245,6 +311,6 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId }: ImageC
                     </button>
                 )}
             </div>
-        </div>
+        </article>
     );
 }

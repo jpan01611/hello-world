@@ -35,6 +35,21 @@ const HUGGINGFACE_TEXT_MODEL = 'meta-llama/Llama-3.1-8B-Instruct';
 
 type Provider = { client: OpenAI; model: string; name: string };
 
+// The literal instruction sent to the vision model. Exported shape so the
+// caller can persist the exact prompt alongside the generated media.
+const DESCRIPTION_PROMPT =
+    'Describe this image factually in 1-2 sentences, focusing on the main subject, action, and setting.';
+
+// Builds the caption prompt for a given description. Kept as a function so the
+// exact text we persist matches the text we send to the model.
+function buildCaptionPrompt(description: string): string {
+    return (
+        `Here is a factual description of a photo: "${description}"\n\n` +
+        'Write one short, witty, funny caption for this photo as if for a caption contest. ' +
+        'Return only the caption text, no quotes, no extra commentary.'
+    );
+}
+
 // Tries each provider in order, returning the first successful non-empty
 // response. Only throws once every provider has failed.
 async function chatWithFallback(
@@ -66,22 +81,22 @@ async function chatWithFallback(
 // Step 1 of the pipeline: ask a vision model for a factual description of
 // what's in the uploaded image. Tries Groq, then OpenRouter, then Hugging
 // Face, in that order. The providers accept a remote image URL directly, no
-// need to fetch/base64-encode it ourselves.
-export async function generateDescription(imageUrl: string): Promise<string> {
+// need to fetch/base64-encode it ourselves. Returns both the description and
+// the exact prompt used, so the caller can persist the prompt.
+export async function generateDescription(
+    imageUrl: string,
+): Promise<{ description: string; prompt: string }> {
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         {
             role: 'user',
             content: [
-                {
-                    type: 'text',
-                    text: 'Describe this image factually in 1-2 sentences, focusing on the main subject, action, and setting.',
-                },
+                { type: 'text', text: DESCRIPTION_PROMPT },
                 { type: 'image_url', image_url: { url: imageUrl } },
             ],
         },
     ];
 
-    return chatWithFallback(
+    const description = await chatWithFallback(
         [
             { client: groqClient, model: VISION_MODEL, name: 'Groq' },
             { client: openRouterClient, model: OPENROUTER_VISION_MODEL, name: 'OpenRouter' },
@@ -90,23 +105,23 @@ export async function generateDescription(imageUrl: string): Promise<string> {
         messages,
         300,
     );
+
+    return { description, prompt: DESCRIPTION_PROMPT };
 }
 
 // Step 2 of the pipeline: turn the factual description into a funny caption,
 // in the spirit of a caption-contest app. Tries Groq, then OpenRouter, then
-// Hugging Face, in that order.
-export async function generateFunnyCaption(description: string): Promise<string> {
+// Hugging Face, in that order. Returns both the caption and the exact prompt
+// used, so the caller can persist the prompt.
+export async function generateFunnyCaption(
+    description: string,
+): Promise<{ caption: string; prompt: string }> {
+    const prompt = buildCaptionPrompt(description);
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        {
-            role: 'user',
-            content:
-                `Here is a factual description of a photo: "${description}"\n\n` +
-                'Write one short, witty, funny caption for this photo as if for a caption contest. ' +
-                'Return only the caption text, no quotes, no extra commentary.',
-        },
+        { role: 'user', content: prompt },
     ];
 
-    return chatWithFallback(
+    const caption = await chatWithFallback(
         [
             { client: groqClient, model: TEXT_MODEL, name: 'Groq' },
             { client: openRouterClient, model: OPENROUTER_TEXT_MODEL, name: 'OpenRouter' },
@@ -115,4 +130,6 @@ export async function generateFunnyCaption(description: string): Promise<string>
         messages,
         150,
     );
+
+    return { caption, prompt };
 }

@@ -14,42 +14,46 @@ export function NewPostForm() {
 
     return (
         <div className="w-full">
-            <div className="mb-6 flex rounded-full border border-black/10 bg-white p-1 dark:border-white/10 dark:bg-zinc-900">
+            <div role="group" aria-label="Choose how to add your photo" className="mb-6 grid grid-cols-2 gap-3">
                 <button
                     type="button"
                     onClick={() => setMode('file')}
-                    className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    aria-pressed={mode === 'file'}
+                    className={`min-h-12 text-sm ${
                         mode === 'file'
-                            ? 'bg-foreground text-background'
-                            : 'text-black hover:bg-black/5 dark:text-zinc-50 dark:hover:bg-white/10'
+                            ? 'sahur-button'
+                            : 'sahur-button-secondary'
                     }`}
                 >
-                    Upload Photo
+                    Upload a file
                 </button>
                 <button
                     type="button"
                     onClick={() => setMode('url')}
-                    className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    aria-pressed={mode === 'url'}
+                    className={`min-h-12 text-sm ${
                         mode === 'url'
-                            ? 'bg-foreground text-background'
-                            : 'text-black hover:bg-black/5 dark:text-zinc-50 dark:hover:bg-white/10'
+                            ? 'sahur-button'
+                            : 'sahur-button-secondary'
                     }`}
                 >
-                    Upload Photo URL
+                    Paste a link
                 </button>
             </div>
 
             {mode === 'file' ? (
                 <form action={uploadImageAction} className="flex flex-col gap-4">
-                    <div className="flex items-center gap-3 rounded-full border border-black/15 py-2 pl-2 pr-4 text-sm text-black dark:border-white/20 dark:text-zinc-50">
+                    <div className="flex flex-col items-center gap-4 rounded-2xl border-[3px] border-dashed border-[#68432d] bg-[#fff1d7] px-5 py-8 text-center text-[#3b2419]">
+                        <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-[#3b2419] bg-[#d6ef73] text-3xl font-black">+</span>
+                        <p className="text-lg font-black">One good photo. Endless possibilities.</p>
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="pressable rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background"
+                            className="sahur-button-secondary min-h-11 text-sm"
                         >
-                            Choose File
+                            Choose a photo
                         </button>
-                        <span className="truncate text-zinc-500 dark:text-zinc-400">
+                        <span aria-live="polite" className="w-full truncate text-sm">
                             {fileName ?? 'No file chosen'}
                         </span>
                         <input
@@ -57,6 +61,7 @@ export function NewPostForm() {
                             type="file"
                             name="file"
                             accept="image/*"
+                            aria-label="Photo to post"
                             required
                             className="hidden"
                             onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
@@ -64,25 +69,32 @@ export function NewPostForm() {
                     </div>
                     <button
                         type="submit"
-                        className="h-11 rounded-full bg-foreground text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+                        className="sahur-button min-h-12"
                     >
-                        Post
+                        Post to the wall
                     </button>
                 </form>
             ) : (
                 <form action={uploadImageUrlAction} className="flex flex-col gap-4">
-                    <input
-                        type="url"
-                        name="imageUrl"
-                        placeholder="https://example.com/photo.jpg"
-                        required
-                        className="h-11 rounded-full border border-black/15 px-4 text-sm text-black dark:border-white/20 dark:bg-zinc-900 dark:text-zinc-50"
-                    />
+                    <label className="flex flex-col gap-2 text-sm font-bold">
+                        Photo URL
+                        <input
+                            type="url"
+                            name="imageUrl"
+                            placeholder="https://example.com/photo.jpg"
+                            required
+                            className="sahur-input"
+                            aria-describedby="photo-url-hint"
+                        />
+                    </label>
+                    <p id="photo-url-hint" className="text-sm leading-relaxed">
+                        Paste a direct link to an image, not the page it lives on.
+                    </p>
                     <button
                         type="submit"
-                        className="h-11 rounded-full bg-foreground text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+                        className="sahur-button min-h-12"
                     >
-                        Post
+                        Post to the wall
                     </button>
                 </form>
             )}

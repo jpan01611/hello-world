@@ -13,6 +13,27 @@ export function NewPostForm() {
     const [fileName, setFileName] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragDepth = useRef(0);
+
+    function selectFiles(files: FileList | null) {
+        const input = fileInputRef.current;
+        if (!input) return;
+        const file = files?.[0];
+        const error = files && files.length > 1
+            ? 'Please drop one image at a time.'
+            : file && !file.type.startsWith('image/')
+                ? 'Please choose an image file, such as JPG, PNG, GIF, or WebP.'
+                : file ? uploadSizeError(file) : 'Please choose an image file.';
+        setUploadError(error);
+        setFileName(error ? null : file?.name ?? null);
+        input.value = '';
+        if (!error && file) {
+            const transfer = new DataTransfer();
+            transfer.items.add(file);
+            input.files = transfer.files;
+        }
+    }
 
     return (
         <div className="w-full">
@@ -31,7 +52,13 @@ export function NewPostForm() {
                 </button>
                 <button
                     type="button"
-                    onClick={() => setMode('url')}
+                    onClick={() => {
+                        setMode('url');
+                        setFileName(null);
+                        setUploadError(null);
+                        setIsDragging(false);
+                        dragDepth.current = 0;
+                    }}
                     aria-pressed={mode === 'url'}
                     className={`min-h-12 text-sm ${
                         mode === 'url'
@@ -52,9 +79,32 @@ export function NewPostForm() {
                         setUploadError(error ?? uploadError);
                     }
                 }} className="flex flex-col gap-4">
-                    <div className="flex flex-col items-center gap-4 rounded-2xl border-[3px] border-dashed border-[#68432d] bg-[#fff1d7] px-5 py-8 text-center text-[#3b2419]">
+                    <div
+                        onDragEnter={(e) => {
+                            e.preventDefault();
+                            dragDepth.current++;
+                            setIsDragging(true);
+                        }}
+                        onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'copy';
+                        }}
+                        onDragLeave={(e) => {
+                            e.preventDefault();
+                            dragDepth.current = Math.max(0, dragDepth.current - 1);
+                            if (dragDepth.current === 0) setIsDragging(false);
+                        }}
+                        onDrop={(e) => {
+                            e.preventDefault();
+                            dragDepth.current = 0;
+                            setIsDragging(false);
+                            selectFiles(e.dataTransfer.files);
+                        }}
+                        className={`flex flex-col items-center gap-4 rounded-2xl border-[3px] border-dashed border-[#68432d] px-5 py-8 text-center text-[#3b2419] transition-colors ${isDragging ? 'bg-[#d6ef73]' : 'bg-[#fff1d7]'}`}
+                    >
                         <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-[#3b2419] bg-[#d6ef73] text-3xl font-black">+</span>
                         <p className="text-lg font-black">One good photo. Endless possibilities.</p>
+                        <p className="text-sm" aria-live="polite">{isDragging ? 'Drop your photo here!' : 'Drag an image here, or choose one below.'}</p>
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
@@ -74,11 +124,7 @@ export function NewPostForm() {
                             required
                             className="hidden"
                             onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                const error = file ? uploadSizeError(file) : null;
-                                setUploadError(error);
-                                setFileName(error ? null : file?.name ?? null);
-                                if (error) e.target.value = '';
+                                selectFiles(e.target.files);
                             }}
                         />
                         <p className="text-sm">{UPLOAD_SIZE_HINT}</p>
@@ -86,7 +132,7 @@ export function NewPostForm() {
                     {uploadError && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{uploadError}</p>}
                     <button
                         type="submit"
-                        disabled={!!uploadError}
+                        disabled={!!uploadError || !fileName}
                         className="sahur-button min-h-12"
                     >
                         Post to the wall

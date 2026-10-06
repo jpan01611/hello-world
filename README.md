@@ -34,7 +34,9 @@ post permissions are unchanged by the redesign.
   featured caption, newest posts first. Anyone can browse; signed-in users
   can expand the remaining captions and vote.
 - **New posts** — add a photo either by uploading a file (stored in Supabase
-  Storage) or by pasting an image URL.
+  Storage) or by pasting an image URL. Pick a file or drag one onto the upload
+  area; non-image files, multiple files, and files over 900 KB are rejected
+  with an inline message before submission.
 - **AI captions** — a two-step pipeline describes the image with a vision model
   and turns that description into a witty caption, with automatic fallback
   across three OpenAI-compatible providers (Groq → OpenRouter → Hugging Face).

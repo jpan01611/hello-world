@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { generateDescription, generateFunnyCaption } from '@/lib/groq';
+import { generateDescription, generateFunnyCaption } from '@/lib/ai/captions';
 import { uploadSizeError } from '@/lib/upload-limits';
 
 const IMAGES_BUCKET = 'images';

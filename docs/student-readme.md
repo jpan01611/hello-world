@@ -40,9 +40,9 @@ Supabase project — see [`docs/setup.md`](./setup.md) for the full checklist.
 | Thing | File |
 |-------|------|
 | Homepage / gallery feed | `app/page.tsx` |
-| One image + captions + voting | `app/ImageCard.tsx` |
-| All the data mutations | `app/actions.ts` |
-| AI caption pipeline | `lib/groq.ts` |
+| One image + captions + voting | `app/_components/posts/ImageCard.tsx` |
+| All the post mutations | `app/_actions/posts.ts` |
+| AI caption pipeline | `lib/ai/captions.ts` |
 | Database schema | `supabase/migrations/` |
 
 Want the deep dive? → [`docs/architecture.md`](./architecture.md)

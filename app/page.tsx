@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { PostPhoto } from './PostPhoto';
+import { PostPhoto } from './_components/posts/PostPhoto';
 import { createClient } from '@/lib/supabase/server';
-import { NewPostTile } from './NewPostTile';
-import { ImageCard } from './ImageCard';
+import { NewPostTile } from './_components/posts/NewPostTile';
+import { ImageCard } from './_components/posts/ImageCard';
 
 type ImageRow = {
     id: string;

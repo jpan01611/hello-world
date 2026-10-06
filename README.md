@@ -75,10 +75,12 @@ app/
   page.tsx               Public featured feed; full captions after sign-in
   layout.tsx             Root layout, fonts
   globals.css            Tailwind + theme tokens
-  actions.ts             Server actions (upload/update/delete/caption/vote)
-  ImageCard.tsx          Client component: one image + captions + voting UI
-  PostPhoto.tsx          Uncropped photo with a proportion-fitting inner frame
-  NewPostTile.tsx        "+" grid tile linking to /new
+  _actions/
+    posts.ts            Server actions (upload/update/delete/caption/vote)
+  _components/posts/
+    ImageCard.tsx       One image + captions + voting UI
+    PostPhoto.tsx       Uncropped photo with a proportion-fitting inner frame
+    NewPostTile.tsx     "+" grid tile linking to /new
   login/page.tsx         Google sign-in
   auth/callback/route.ts OAuth code→session exchange
   complete-profile/      First/last name onboarding
@@ -89,7 +91,8 @@ app/
     NewPostForm.tsx      Upload-file vs paste-URL form
 
 lib/
-  groq.ts                AI caption pipeline + provider fallback
+  ai/captions.ts         AI caption pipeline + provider fallback
+  upload-limits.ts       Shared upload size validation
   supabase/
     client.ts            Browser Supabase client
     server.ts            Server Supabase client (Server Components/Actions)
@@ -111,8 +114,8 @@ walkthrough with diagrams.
   session cookies on matched requests. The homepage allows signed-out browsing;
   protected routes require login and signed-in homepage users complete onboarding.
 - **Posting, captions & voting.** All mutations run through **server actions**
-  (`app/actions.ts`) with ownership re-checked on top of RLS. Captions come from
-  a two-step AI pipeline (`lib/groq.ts`) that persists the exact prompts used.
+  (`app/_actions/posts.ts`) with ownership re-checked on top of RLS. Captions come from
+  a two-step AI pipeline (`lib/ai/captions.ts`) that persists the exact prompts used.
   Voting is atomic via the `toggle_vote` function, with optimistic UI.
 - **Images.** Files go to Supabase Storage; only public URLs are stored in
   Postgres. `next.config.ts` allowlists the storage host for `next/image`.

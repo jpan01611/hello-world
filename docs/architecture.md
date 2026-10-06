@@ -103,7 +103,7 @@ flowchart LR
     end
 ```
 
-- `lib/groq.ts` runs a two-step pipeline: a vision model produces a factual
+- `lib/ai/captions.ts` runs a two-step pipeline: a vision model produces a factual
   description, then a text model turns it into a caption.
 - Each step calls `chatWithFallback`, which tries **Groq → OpenRouter →
   Hugging Face** and returns the first non-empty response. All three are
@@ -116,7 +116,7 @@ flowchart LR
 
 ## Posting, voting & ownership
 
-- Mutations run through **server actions** in `app/actions.ts`. Editing,
+- Mutations run through **server actions** in `app/_actions/posts.ts`. Editing,
   deleting, and caption generation require post ownership. Generation loads
   the stored image URL after checking ownership rather than trusting a
   client-supplied URL. Caption-insert RLS also checks parent-post ownership.
@@ -125,7 +125,7 @@ flowchart LR
   raw captions, prompts, and vote records remain inaccessible to them.
 - Voting delegates to the `toggle_vote` Postgres function so the
   read-then-write is atomic (two fast clicks can't both see "no existing vote"
-  and race past the undo branch). `app/ImageCard.tsx` mirrors that logic with
+  and race past the undo branch). `app/_components/posts/ImageCard.tsx` mirrors that logic with
   `useOptimistic` for instant feedback.
 
 ## Images & storage

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { uploadImageAction, uploadImageUrlAction } from '../actions';
+import { uploadImageAction, uploadImageUrlAction } from '@/app/_actions/posts';
 import { UPLOAD_SIZE_HINT, uploadSizeError } from '@/lib/upload-limits';
 
 type Mode = 'file' | 'url';

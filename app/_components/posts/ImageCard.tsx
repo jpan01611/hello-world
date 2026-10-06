@@ -2,7 +2,7 @@
 
 import { PostPhoto } from './PostPhoto';
 import { useOptimistic, useState, useTransition } from 'react';
-import { deleteImageAction, generateCaptionAction, updateImageAction, voteOnCaptionAction } from './actions';
+import { deleteImageAction, generateCaptionAction, updateImageAction, voteOnCaptionAction } from '@/app/_actions/posts';
 import { UPLOAD_SIZE_HINT, uploadSizeError } from '@/lib/upload-limits';
 
 type Vote = {

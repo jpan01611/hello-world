@@ -111,8 +111,8 @@ flowchart LR
   URLs — server-side only (the keys have no `NEXT_PUBLIC_` prefix).
 - The literal prompt text for **both** steps is returned and persisted on the
   caption row (`vision_prompt`, `caption_prompt`), so every AI generation is
-  traceable to the inputs that produced it. The UI exposes them via the
-  "View prompt" disclosure on each caption.
+  traceable to the inputs that produced it. Prompts are not fetched or shown
+  by the feed UI; their templates are documented in the README.
 
 ## Posting, voting & ownership
 

@@ -38,8 +38,8 @@ post permissions are unchanged by the redesign.
 - **AI captions** — a two-step pipeline describes the image with a vision model
   and turns that description into a witty caption, with automatic fallback
   across three OpenAI-compatible providers (Groq → OpenRouter → Hugging Face).
-  The exact prompts used for both steps are saved alongside each caption and
-  can be inspected from the UI via "View prompt".
+  The exact prompts used for both steps are saved alongside each caption,
+  but are not displayed or fetched by the feed UI.
 - **Voting** — up/down vote captions with optimistic UI; votes toggle/flip
   atomically server-side. The top-rated caption is highlighted in place. Voting
   is restricted to logged-in users at both the server-action and database
@@ -75,6 +75,7 @@ app/
   globals.css            Tailwind + theme tokens
   actions.ts             Server actions (upload/update/delete/caption/vote)
   ImageCard.tsx          Client component: one image + captions + voting UI
+  PostPhoto.tsx          Uncropped photo with a proportion-fitting inner frame
   NewPostTile.tsx        "+" grid tile linking to /new
   login/page.tsx         Google sign-in
   auth/callback/route.ts OAuth code→session exchange
@@ -115,6 +116,26 @@ walkthrough with diagrams.
   Postgres. `next.config.ts` allowlists the storage host for `next/image`.
 
 ## Database
+
+### Behind the punchline
+
+The vision model receives an image URL and this instruction:
+
+> Describe this image factually in 1-2 sentences, focusing on the main subject, action, and setting.
+
+The text model then receives this template, with `{description}` replaced by
+the vision output:
+
+```text
+Here is a factual description of a photo: "{description}"
+
+Write one short, witty, funny caption for this photo as if for a caption contest. Return only the caption text, no quotes, no extra commentary.
+```
+
+Each generation saves the exact instructions in `vision_prompt` and
+`caption_prompt`, alongside its description and caption. Existing rows created
+before prompt logging may have null prompt fields. This keeps prompt records
+for the assignment without adding developer details to the browsing UI.
 
 Schema lives in [`supabase/migrations/`](./supabase/migrations) (10 ordered,
 idempotent SQL files) and is the source of truth.

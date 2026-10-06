@@ -1,16 +1,9 @@
 'use client';
 
-import Image from 'next/image';
+import { PostPhoto } from './PostPhoto';
 import { useOptimistic, useState, useTransition } from 'react';
 import { deleteImageAction, generateCaptionAction, updateImageAction, voteOnCaptionAction } from './actions';
-
-// Only photos hosted in our own Supabase Storage bucket (allowlisted in
-// next.config.ts) can go through next/image's optimizer. Arbitrary
-// user-pasted URLs render `unoptimized` instead, since we can't allowlist
-// every possible external host.
-const SUPABASE_STORAGE_PREFIX = process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/`
-    : null;
+import { UPLOAD_SIZE_HINT, uploadSizeError } from '@/lib/upload-limits';
 
 type Vote = {
     user_id: string;
@@ -21,8 +14,6 @@ type Caption = {
     id: string;
     description: string;
     caption: string;
-    vision_prompt: string | null;
-    caption_prompt: string | null;
     created_at: string;
     votes: Vote[];
 };
@@ -110,6 +101,12 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
 
     function handleUpdate(formData: FormData) {
         setError(null);
+        const file = formData.get('file');
+        const sizeError = file instanceof File ? uploadSizeError(file) : null;
+        if (sizeError) {
+            setError(sizeError);
+            return;
+        }
         startSaveTransition(async () => {
             try {
                 await updateImageAction(imageId, formData);
@@ -196,7 +193,6 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
             return bestIdx;
         }, 0);
     const otherCaptions = optimisticCaptions.filter((_, i) => i !== featuredIndex);
-    const isOptimizableImage = SUPABASE_STORAGE_PREFIX !== null && imageUrl.startsWith(SUPABASE_STORAGE_PREFIX);
 
     function renderCaption(c: Caption) {
         return (
@@ -217,42 +213,13 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
                         </span>
                     )}
                 </div>
-                {(c.caption_prompt || c.vision_prompt) && (
-                    <details className="mt-1 text-xs text-[#71523c]">
-                        <summary className="sahur-button-ghost select-none">Behind the punchline</summary>
-                        <div className="mt-2 flex flex-col gap-3 rounded-xl bg-[#eadcc4] p-3">
-                            {c.vision_prompt && (
-                                <div>
-                                    <p className="font-bold">Vision prompt</p>
-                                    <p className="whitespace-pre-wrap break-words">{c.vision_prompt}</p>
-                                </div>
-                            )}
-                            {c.caption_prompt && (
-                                <div>
-                                    <p className="font-bold">Caption prompt</p>
-                                    <p className="whitespace-pre-wrap break-words">{c.caption_prompt}</p>
-                                </div>
-                            )}
-                        </div>
-                    </details>
-                )}
             </li>
         );
     }
 
     return (
         <article className="sahur-post group flex flex-col">
-            <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#eadcc4]">
-                <Image
-                    src={imageUrl}
-                    alt="Uploaded"
-                    fill
-                    unoptimized={!isOptimizableImage}
-                    loading="lazy"
-                    sizes="(max-width: 460px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-            </div>
+            <PostPhoto src={imageUrl} />
 
             <div className="flex flex-col gap-4 p-3">
                 <p className="sahur-eyebrow">{isOwner ? 'Your photo. Your chaos.' : 'AI wrote it. You judge it.'}</p>
@@ -278,8 +245,12 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
                         {isEditing && (
                             <form action={handleUpdate} className="flex flex-col gap-3 rounded-xl bg-[#eadcc4] p-3">
                                 <label>Replace with a photo
-                                    <input type="file" name="file" accept="image/*" className="mt-1 w-full" />
+                                    <input type="file" name="file" accept="image/*" className="mt-1 w-full" onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        setError(file ? uploadSizeError(file) : null);
+                                    }} />
                                 </label>
+                                <p>{UPLOAD_SIZE_HINT}</p>
                                 <label>Or use an image URL
                                     <input type="url" name="imageUrl" placeholder={imageUrl} className="sahur-input mt-1" />
                                 </label>

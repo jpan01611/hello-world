@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
+import { UPLOAD_SIZE_HINT, uploadSizeError } from '@/lib/upload-limits';
 
 const AVATARS_BUCKET = 'avatars';
 
@@ -63,6 +64,11 @@ export default function ProfileForm() {
 
         if (!file || !userId) return;
 
+        const sizeError = uploadSizeError(file);
+        if (sizeError) {
+            setAvatarError(sizeError);
+            return;
+        }
         setAvatarError(null);
         setUploadingAvatar(true);
 
@@ -186,6 +192,7 @@ export default function ProfileForm() {
                             onChange={handleAvatarChange}
                             className="hidden"
                         />
+                        <p className="text-xs">{UPLOAD_SIZE_HINT}</p>
                         <button
                             type="button"
                             disabled={uploadingAvatar}

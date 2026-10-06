@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
+import { PostPhoto } from './PostPhoto';
 import { createClient } from '@/lib/supabase/server';
 import { NewPostTile } from './NewPostTile';
 import { ImageCard } from './ImageCard';
@@ -14,8 +14,6 @@ type ImageRow = {
         id: string;
         description: string;
         caption: string;
-        vision_prompt: string | null;
-        caption_prompt: string | null;
         created_at: string;
         votes: { user_id: string; value: number }[];
     }[];
@@ -48,7 +46,7 @@ export default async function Home() {
     // position stays stable regardless of vote changes.
     const { data: images, error: imageError } = user ? await supabase
         .from('images')
-        .select('id, created_by, image_url, created_at, captions(id, description, caption, vision_prompt, caption_prompt, created_at, votes(user_id, value))')
+        .select('id, created_by, image_url, created_at, captions(id, description, caption, created_at, votes(user_id, value))')
         .order('created_at', { foreignTable: 'captions', ascending: true })
         .order('created_at', { ascending: false }) : { data: null, error: null };
     const error = publicFeed?.error ?? imageError;
@@ -124,9 +122,7 @@ export default async function Home() {
                         ))}
                         {!user && publicPosts.map((post) => (
                             <article key={post.id} className="sahur-post">
-                                <div className="relative aspect-square overflow-hidden rounded-xl">
-                                    <Image src={post.image_url} alt="Posted photo" fill unoptimized sizes="(max-width: 460px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover" />
-                                </div>
+                                <PostPhoto src={post.image_url} />
                                 <div className="p-3">
                                     <p className="text-base font-bold leading-relaxed">{post.caption ?? 'The punchline is still loading in real life.'}</p>
                                     {post.caption !== null && <p className="sahur-tag mt-3">Crowd pick · {post.score ?? 0} net votes</p>}

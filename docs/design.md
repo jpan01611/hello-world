@@ -36,8 +36,8 @@ contest rather than a one-off output: allow multiple caption attempts, let
 people rate them, and make the best-rated result easy to find. Crackd already
 supports multiple captions, displays a featured caption by net votes (newest
 breaks ties), and collapses the remaining captions to keep browsing compact.
-Saving the actual prompts and exposing them through "View prompt" also makes
-the generation process inspectable instead of opaque.
+Saving the actual prompts preserves a record of generation inputs. Their
+templates are documented in the README rather than exposed in the feed.
 
 A possible next experiment is an optional daily campus/NYC photo challenge.
 It would give Sam a concrete reason to return and a shared context for jokes.
@@ -56,7 +56,7 @@ record their actual observations and the resulting changes here.
 | Pending | Not yet recorded | Pending feedback | None attributed to PM feedback | Not yet evaluated |
 
 Ask the PM to post a photo, generate a caption, vote, undo or flip the vote,
-and inspect a prompt. Note where they hesitate and whether the featured
+and reload to confirm it persists. Note where they hesitate and whether the featured
 caption and voting feedback are understandable. Prioritize observed friction
 over speculative engagement features, then have them retry the changed flow.
 

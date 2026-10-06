@@ -55,6 +55,11 @@ apply `0010_public_featured_feed.sql` before using the public homepage.
 
 ## Running locally
 
+Image and GIF uploads are capped at 900 KB in the app. Oversized files show
+an inline message before upload. This leaves multipart overhead below Next.js's
+default 1 MB Server Action request limit; Supabase bucket restrictions still
+apply. Use a smaller file or a hosted image URL for larger media.
+
 ```bash
 npm install
 npm run dev

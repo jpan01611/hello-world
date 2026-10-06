@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { generateDescription, generateFunnyCaption } from '@/lib/groq';
+import { uploadSizeError } from '@/lib/upload-limits';
 
 const IMAGES_BUCKET = 'images';
 
@@ -17,6 +18,8 @@ export async function uploadImageAction(formData: FormData) {
     if (!(file instanceof File) || file.size === 0) {
         throw new Error('Please choose an image file');
     }
+    const sizeError = uploadSizeError(file);
+    if (sizeError) throw new Error(sizeError);
 
     const supabase = await createClient();
 
@@ -122,6 +125,8 @@ export async function updateImageAction(imageId: string, formData: FormData) {
     let newImageUrl: string;
 
     if (file instanceof File && file.size > 0) {
+        const sizeError = uploadSizeError(file);
+        if (sizeError) throw new Error(sizeError);
         const fileExt = file.name.split('.').pop();
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
 

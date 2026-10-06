@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { uploadImageAction, uploadImageUrlAction } from '../actions';
+import { UPLOAD_SIZE_HINT, uploadSizeError } from '@/lib/upload-limits';
 
 type Mode = 'file' | 'url';
 
@@ -11,6 +12,7 @@ export function NewPostForm() {
     const [mode, setMode] = useState<Mode>('file');
     const [fileName, setFileName] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
     return (
         <div className="w-full">
@@ -42,7 +44,14 @@ export function NewPostForm() {
             </div>
 
             {mode === 'file' ? (
-                <form action={uploadImageAction} className="flex flex-col gap-4">
+                <form action={uploadImageAction} onSubmit={(e) => {
+                    const file = fileInputRef.current?.files?.[0];
+                    const error = file ? uploadSizeError(file) : null;
+                    if (error || uploadError) {
+                        e.preventDefault();
+                        setUploadError(error ?? uploadError);
+                    }
+                }} className="flex flex-col gap-4">
                     <div className="flex flex-col items-center gap-4 rounded-2xl border-[3px] border-dashed border-[#68432d] bg-[#fff1d7] px-5 py-8 text-center text-[#3b2419]">
                         <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-[#3b2419] bg-[#d6ef73] text-3xl font-black">+</span>
                         <p className="text-lg font-black">One good photo. Endless possibilities.</p>
@@ -64,11 +73,20 @@ export function NewPostForm() {
                             aria-label="Photo to post"
                             required
                             className="hidden"
-                            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                const error = file ? uploadSizeError(file) : null;
+                                setUploadError(error);
+                                setFileName(error ? null : file?.name ?? null);
+                                if (error) e.target.value = '';
+                            }}
                         />
+                        <p className="text-sm">{UPLOAD_SIZE_HINT}</p>
                     </div>
+                    {uploadError && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{uploadError}</p>}
                     <button
                         type="submit"
+                        disabled={!!uploadError}
                         className="sahur-button min-h-12"
                     >
                         Post to the wall

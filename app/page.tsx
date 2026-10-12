@@ -2,13 +2,13 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { PostPhoto } from './_components/posts/PostPhoto';
 import { createClient } from '@/lib/supabase/server';
-import { NewPostTile } from './_components/posts/NewPostTile';
-import { ImageCard } from './_components/posts/ImageCard';
+import { FeedGrid, type FeedImage } from './_components/posts/FeedGrid';
 
 type ImageRow = {
     id: string;
     created_by: string;
     image_url: string;
+    context: string | null;
     created_at: string;
     captions: {
         id: string;
@@ -45,7 +45,7 @@ export default async function Home() {
     // position stays stable regardless of vote changes.
     const { data: images, error: imageError } = user ? await supabase
         .from('images')
-        .select('id, created_by, image_url, created_at, captions(id, caption, created_at, votes(user_id, value))')
+        .select('id, created_by, image_url, context, created_at, captions(id, created_by, caption, created_at, votes(user_id, value))')
         .order('created_at', { foreignTable: 'captions', ascending: true })
         .order('created_at', { ascending: false }) : { data: null, error: null };
     const error = publicFeed?.error ?? imageError;
@@ -75,6 +75,7 @@ export default async function Home() {
                     <nav aria-label="Account" className="flex gap-3">
                     {user ? (
                         <>
+                            <Link href="/dashboard" className="sahur-button-secondary">Dashboard</Link>
                             <Link href="/profile" className="sahur-button-secondary">My profile</Link>
                         </>
                     ) : (
@@ -106,22 +107,13 @@ export default async function Home() {
 
                 {error ? (
                     <p className="text-sm text-red-600">Error loading images: {error.message}</p>
+                ) : user ? (
+                    <FeedGrid images={(uniqueImages ?? []) as FeedImage[]} currentUserId={user.id} />
                 ) : (
                     <div className="grid grid-cols-1 items-start gap-6 min-[460px]:grid-cols-2 lg:grid-cols-3">
-                        {user && <NewPostTile />}
-                        {user && uniqueImages?.map((image: ImageRow) => (
-                            <ImageCard
-                                key={image.id}
-                                imageId={image.id}
-                                imageUrl={image.image_url}
-                                captions={image.captions}
-                                currentUserId={user.id}
-                                createdBy={image.created_by}
-                            />
-                        ))}
-                        {!user && publicPosts.map((post) => (
+                        {publicPosts.map((post, index) => (
                             <article key={post.id} className="sahur-post">
-                                <PostPhoto src={post.image_url} />
+                                <PostPhoto src={post.image_url} priority={index === 0} />
                                 <div className="p-3">
                                     <p className="text-base font-bold leading-relaxed">{post.caption ?? 'The punchline is still loading in real life.'}</p>
                                     {post.caption !== null && <p className="sahur-tag mt-3">Crowd pick · {post.score ?? 0} net votes</p>}
@@ -131,7 +123,7 @@ export default async function Home() {
                         ))}
                     </div>
                 )}
-                {!error && (user ? uniqueImages?.length === 0 : publicPosts.length === 0) && (
+                {!error && !user && publicPosts.length === 0 && (
                     <div className="sahur-panel mt-6 text-center">
                         <h3 className="text-xl font-black">Quiet lodge. Loud potential.</h3>
                         <p className="mt-2">Be the first to bring a photo worth captioning.</p>

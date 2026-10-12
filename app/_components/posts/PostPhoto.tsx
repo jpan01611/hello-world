@@ -7,7 +7,7 @@ const STORAGE_PREFIX = process.env.NEXT_PUBLIC_SUPABASE_URL
     ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/`
     : null;
 
-export function PostPhoto({ src }: { src: string }) {
+export function PostPhoto({ src, priority = false }: { src: string; priority?: boolean }) {
     const [dimensions, setDimensions] = useState<{ src: string; ratio: number } | null>(null);
     const ratio = dimensions?.src === src ? dimensions.ratio : null;
     const width = ratio !== null && ratio < 1 ? ratio * 100 : 100;
@@ -29,6 +29,7 @@ export function PostPhoto({ src }: { src: string }) {
                     alt="Posted photo"
                     fill
                     unoptimized={!STORAGE_PREFIX || !src.startsWith(STORAGE_PREFIX)}
+                    loading={priority ? 'eager' : 'lazy'}
                     sizes="(max-width: 460px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-contain"
                     onLoad={(event) => {

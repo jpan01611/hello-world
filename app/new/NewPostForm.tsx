@@ -79,6 +79,17 @@ export function NewPostForm() {
                         setUploadError(error ?? uploadError);
                     }
                 }} className="flex flex-col gap-4">
+                    <label className="flex flex-col gap-2 text-sm font-bold">
+                        Add context for the caption
+                        <textarea
+                            name="context"
+                            rows={3}
+                            maxLength={500}
+                            placeholder="What should the AI know? E.g. Butler Library during midterms, or a rainy walk near Columbia."
+                            className="sahur-input resize-y"
+                        />
+                        <span className="font-normal text-[#71523c]">Keep it NYC or Columbia-adjacent for the best caption.</span>
+                    </label>
                     <div
                         onDragEnter={(e) => {
                             e.preventDefault();
@@ -140,6 +151,17 @@ export function NewPostForm() {
                 </form>
             ) : (
                 <form action={uploadImageUrlAction} className="flex flex-col gap-4">
+                    <label className="flex flex-col gap-2 text-sm font-bold">
+                        Add context for the caption
+                        <textarea
+                            name="context"
+                            rows={3}
+                            maxLength={500}
+                            placeholder="What should the AI know? E.g. a Columbia study break or a subway adventure."
+                            className="sahur-input resize-y"
+                        />
+                        <span className="font-normal text-[#71523c]">Keep it NYC or Columbia-adjacent for the best caption.</span>
+                    </label>
                     <label className="flex flex-col gap-2 text-sm font-bold">
                         Photo URL
                         <input

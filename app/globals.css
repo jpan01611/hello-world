@@ -51,6 +51,7 @@ body {
 .sahur-button { background: var(--ember); color: #302017; box-shadow: 0 3px 0 var(--walnut); }
 .sahur-button-secondary { background: #fff9ec; color: #302017; box-shadow: 0 3px 0 #49302450; }
 .sahur-button-ghost { background: #eadcc4; color: #493024; border-color: transparent; }
+.sahur-caption-delete { min-height: 35px; padding: .52rem .8rem; font-size: .68rem; }
 .sahur-button:not(:disabled):hover, .sahur-button-secondary:not(:disabled):hover { transform: translateY(-2px) rotate(-1deg); box-shadow: 0 5px 0 var(--walnut); }
 .sahur-button-ghost:not(:disabled):hover { background: #dbc5a5; }
 button:disabled { opacity: .55; }

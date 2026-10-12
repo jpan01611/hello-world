@@ -12,17 +12,13 @@ NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 
 # AI providers (server-only; no NEXT_PUBLIC_ prefix)
-GROQ_API_KEY=<groq-key>
-OPENROUTER_API_KEY=<openrouter-key>     # fallback
-HUGGINGFACE_API_KEY=<huggingface-key>   # fallback
+GEMINI_API_KEY=<gemini-key>
 ```
 
-The two Supabase values come from your project's **API settings**. The AI
-keys are server-only. At least one provider key is required; unconfigured
-providers are skipped. Configured providers are tried in Groq, OpenRouter,
-then Hugging Face order. Adding fallback keys is recommended for outages or
-rate limits. Clients are initialized only when needed and reused; missing
-fallback keys no longer prevent the app from loading.
+The two Supabase values come from your project's **API settings**. AI keys are
+server-only. Gemini is used for both stages through its OpenAI-compatible
+`gemini-2.5-flash` endpoint. The image is analyzed first, then that analysis
+and the creator context are used to generate one meme caption.
 
 ## Supabase setup
 

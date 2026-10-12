@@ -2,8 +2,7 @@
 
 import { PostPhoto } from './PostPhoto';
 import { useOptimistic, useState, useTransition } from 'react';
-import { deleteImageAction, generateCaptionAction, updateImageAction, voteOnCaptionAction } from '@/app/_actions/posts';
-import { UPLOAD_SIZE_HINT, uploadSizeError } from '@/lib/upload-limits';
+import { deleteCaptionAction, deleteImageAction, generateCaptionAction, updateImageContextAction, voteOnCaptionAction } from '@/app/_actions/posts';
 
 type Vote = {
     user_id: string;
@@ -12,6 +11,7 @@ type Vote = {
 
 type Caption = {
     id: string;
+    created_by: string;
     caption: string;
     created_at: string;
     votes: Vote[];
@@ -20,16 +20,21 @@ type Caption = {
 type ImageCardProps = {
     imageId: string;
     imageUrl: string;
+    context?: string | null;
     captions: Caption[];
     currentUserId: string;
     createdBy: string;
+    priority?: boolean;
 };
 
 type VoteAction = {
+    type: 'vote';
     captionId: string;
     value: 1 | -1;
     userId: string;
 };
+
+type CaptionAction = VoteAction | { type: 'delete'; captionId: string };
 
 function netVotes(caption: Caption) {
     return caption.votes.reduce((sum, v) => sum + v.value, 0);
@@ -88,41 +93,39 @@ function VoteControls({
 // captions to visually "jump" between a special top slot and a collapsed
 // list). The highest-voted caption is labelled "Top caption" in place,
 // without moving position.
-export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdBy }: ImageCardProps) {
+export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdBy, context, priority = false }: ImageCardProps) {
     const [isGenerating, startGenerateTransition] = useTransition();
+    const [isDeleting, startDeleteTransition] = useTransition();
+    const [isSavingContext, startSaveContextTransition] = useTransition();
+    const [deletingCaptionId, setDeletingCaptionId] = useState<string | null>(null);
     const [isVoting, startVoteTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
     const [showAllCaptions, setShowAllCaptions] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
-    const [isSaving, startSaveTransition] = useTransition();
+    const [isEditingContext, setIsEditingContext] = useState(false);
+    const [currentContext, setCurrentContext] = useState(context ?? '');
     const isOwner = currentUserId === createdBy;
-
-    function handleUpdate(formData: FormData) {
-        setError(null);
-        const file = formData.get('file');
-        const sizeError = file instanceof File ? uploadSizeError(file) : null;
-        if (sizeError) {
-            setError(sizeError);
-            return;
-        }
-        startSaveTransition(async () => {
-            try {
-                await updateImageAction(imageId, formData);
-                setIsEditing(false);
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to update post');
-            }
-        });
-    }
 
     function handleDelete() {
         if (!window.confirm('Delete this post and all its captions and votes?')) return;
         setError(null);
-        startSaveTransition(async () => {
+        startDeleteTransition(async () => {
             try {
                 await deleteImageAction(imageId);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to delete post');
+            }
+        });
+    }
+
+    function handleContextSubmit(formData: FormData) {
+        setError(null);
+        startSaveContextTransition(async () => {
+            try {
+                await updateImageContextAction(imageId, formData);
+                setCurrentContext(String(formData.get('context') ?? '').trim());
+                setIsEditingContext(false);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to update context');
             }
         });
     }
@@ -132,17 +135,23 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
     // trip (RPC + gallery re-fetch) to see it reflected.
     const [optimisticCaptions, applyOptimisticVote] = useOptimistic(
         captions,
-        (current: Caption[], action: VoteAction) => current.map((c) => {
-            if (c.id !== action.captionId) {
-                return c;
+        (current: Caption[], action: CaptionAction) => {
+            if (action.type === 'delete') {
+                return current.filter((c) => c.id !== action.captionId);
             }
-            const mine = myVote(c, action.userId);
-            const votesWithoutMine = c.votes.filter((v) => v.user_id !== action.userId);
-            const votes = mine === action.value
-                ? votesWithoutMine
-                : [...votesWithoutMine, { user_id: action.userId, value: action.value }];
-            return { ...c, votes };
-        }),
+
+            return current.map((c) => {
+                if (c.id !== action.captionId) {
+                    return c;
+                }
+                const mine = myVote(c, action.userId);
+                const votesWithoutMine = c.votes.filter((v) => v.user_id !== action.userId);
+                const votes = mine === action.value
+                    ? votesWithoutMine
+                    : [...votesWithoutMine, { user_id: action.userId, value: action.value }];
+                return { ...c, votes };
+            });
+        },
     );
 
     function handleGenerateCaption() {
@@ -160,11 +169,27 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
         if (isVoting) return;
         setError(null);
         startVoteTransition(async () => {
-            applyOptimisticVote({ captionId, value, userId: currentUserId });
+            applyOptimisticVote({ type: 'vote', captionId, value, userId: currentUserId });
             try {
                 await voteOnCaptionAction(captionId, value);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to vote');
+            }
+        });
+    }
+
+    function handleDeleteCaption(captionId: string) {
+        if (!window.confirm('Delete this caption and its votes?')) return;
+        setError(null);
+        setDeletingCaptionId(captionId);
+        startDeleteTransition(async () => {
+            applyOptimisticVote({ type: 'delete', captionId });
+            try {
+                await deleteCaptionAction(captionId);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to delete caption');
+            } finally {
+                setDeletingCaptionId(null);
             }
         });
     }
@@ -196,18 +221,28 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
                 <p className="text-base font-bold leading-relaxed">
                     {c.caption}
                 </p>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                     <VoteControls
                         caption={c}
                         currentUserId={currentUserId}
                         pending={isVoting}
                         onVote={handleVote}
                     />
-                    {hasUniqueTop && netVotes(c) === topScore && (
-                        <span className="sahur-tag">
-                            Crowd pick
-                        </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {hasUniqueTop && netVotes(c) === topScore && (
+                            <span className="sahur-tag">Crowd pick</span>
+                        )}
+                        {c.created_by === currentUserId && (
+                            <button
+                                type="button"
+                                onClick={() => handleDeleteCaption(c.id)}
+                                disabled={isDeleting || deletingCaptionId === c.id}
+                                className="sahur-button-ghost sahur-caption-delete"
+                            >
+                                {deletingCaptionId === c.id ? 'Deleting…' : 'Delete'}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </li>
         );
@@ -215,10 +250,37 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
 
     return (
         <article className="sahur-post group flex flex-col">
-            <PostPhoto src={imageUrl} />
+            <PostPhoto src={imageUrl} priority={priority} />
 
             <div className="flex flex-col gap-4 p-3">
                 <p className="sahur-eyebrow">{isOwner ? 'Your photo. Your chaos.' : 'AI wrote it. You judge it.'}</p>
+                {isOwner && isEditingContext ? (
+                    <form action={handleContextSubmit} className="flex flex-col gap-2 rounded-xl bg-[#eadcc4] p-3">
+                        <label className="text-sm font-bold" htmlFor={`context-${imageId}`}>Post context</label>
+                        <textarea
+                            id={`context-${imageId}`}
+                            name="context"
+                            defaultValue={currentContext}
+                            maxLength={500}
+                            rows={3}
+                            className="sahur-input resize-y"
+                            placeholder="Add NYC or Columbia context for the caption"
+                        />
+                        <div className="flex gap-2">
+                            <button type="submit" disabled={isSavingContext} className="sahur-button-secondary">{isSavingContext ? 'Saving…' : 'Save context'}</button>
+                            <button type="button" disabled={isSavingContext} onClick={() => setIsEditingContext(false)} className="sahur-button-ghost">Cancel</button>
+                        </div>
+                    </form>
+                ) : (
+                    <div className="flex items-start justify-between gap-2">
+                        {currentContext ? (
+                            <p className="flex-1 rounded-lg bg-[#fff1d7] px-3 py-2 text-sm leading-relaxed"><span className="font-bold">Creator context:</span> {currentContext}</p>
+                        ) : isOwner ? (
+                            <p className="flex-1 rounded-lg bg-[#fff1d7] px-3 py-2 text-sm text-[#71523c]">Add context to guide the NYC/Columbia caption.</p>
+                        ) : null}
+                        {isOwner && <button type="button" onClick={() => setIsEditingContext(true)} className="sahur-button-ghost sahur-caption-delete">{currentContext ? 'Edit context' : 'Add context'}</button>}
+                    </div>
+                )}
                 {isOwner && <button
                     type="button"
                     onClick={handleGenerateCaption}
@@ -233,27 +295,7 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
                 </button>}
 
                 {isOwner && (
-                    <div className="flex flex-col gap-2 text-xs">
-                        <div className="flex flex-wrap gap-2">
-                            <button type="button" className="sahur-button-ghost" aria-expanded={isEditing} disabled={isSaving} onClick={() => setIsEditing(!isEditing)}>{isEditing ? 'Cancel edit' : 'Edit post'}</button>
-                            <button type="button" disabled={isSaving} onClick={handleDelete} className="sahur-button-ghost">Delete post</button>
-                        </div>
-                        {isEditing && (
-                            <form action={handleUpdate} className="flex flex-col gap-3 rounded-xl bg-[#eadcc4] p-3">
-                                <label>Replace with a photo
-                                    <input type="file" name="file" accept="image/*" className="mt-1 w-full" onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        setError(file ? uploadSizeError(file) : null);
-                                    }} />
-                                </label>
-                                <p>{UPLOAD_SIZE_HINT}</p>
-                                <label>Or use an image URL
-                                    <input type="url" name="imageUrl" placeholder={imageUrl} className="sahur-input mt-1" />
-                                </label>
-                                <button type="submit" className="sahur-button-secondary" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save photo'}</button>
-                            </form>
-                        )}
-                    </div>
+                    <button type="button" onClick={handleDelete} disabled={isDeleting} className="sahur-button-ghost w-full">{isDeleting ? 'Deleting…' : 'Delete post'}</button>
                 )}
 
                 {error && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{error}</p>}

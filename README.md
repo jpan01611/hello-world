@@ -1,8 +1,8 @@
 # funfunfunsahur
 
-A caption-contest web app: upload a photo, let AI generate a funny caption for
-it, and vote on everyone's captions in a shared gallery feed. Built with
-Next.js 16 (App Router) and Supabase.
+A caption-contest web app: upload a photo, add context, let Gemini generate a
+NYC/Columbia-themed meme caption, and vote on the community's captions. Built
+with Next.js 16 and Supabase.
 
 Originally bootstrapped from `create-next-app` as a course project (see
 [`REQUIREMENTS.md`](./REQUIREMENTS.md) for the HW1→HW4 assignment scope) and
@@ -30,27 +30,23 @@ post permissions are unchanged by the redesign.
   `auth.users` trigger). First-time users are prompted to complete their first
   and last name before entering the app. Users can edit their name and upload
   an avatar from the Profile page.
-- **Gallery feed (homepage)** — a shared grid of every posted image and its
-  featured caption, newest posts first. Anyone can browse; signed-in users
-  can expand the remaining captions and vote.
+- **Gallery feed (homepage)** — a shared grid of posts with filters for all
+  posts, your posts, unvoted posts, and posts without captions.
 - **New posts** — add a photo either by uploading a file (stored in Supabase
   Storage) or by pasting an image URL. Pick a file or drag one onto the upload
   area; non-image files, multiple files, and files over 900 KB are rejected
   with an inline message before submission.
-- **AI captions** — a two-step pipeline describes the image with a vision model
-  and turns that description into a witty caption, with automatic fallback
-  across three OpenAI-compatible providers (Groq → OpenRouter → Hugging Face).
-  The exact prompts used for both steps are saved alongside each caption,
-  but are not displayed or fetched by the feed UI.
-  Only configured providers are initialized, on demand, and their clients
-  are reused across calls.
+- **AI captions** — Gemini first analyzes the photo and creator context, then
+  generates a meme statement grounded in the photo, context, New York City,
+  and Columbia University. The exact prompts are saved with each caption.
 - **Voting** — up/down vote captions with optimistic UI; votes toggle/flip
   atomically server-side. The top-rated caption is highlighted in place. Voting
   is restricted to logged-in users at both the server-action and database
   (RLS) level.
-- **Owner controls** — only a post's creator can edit or delete it; deletes
-  cascade to the post's captions and votes. Only the post owner can generate
-  captions for that post.
+- **Owner controls** — owners can edit context, generate captions, delete
+  captions, and delete posts. Deletes cascade to related votes.
+- **Creator dashboard** — `/dashboard` shows your posts, caption count, vote
+  count, and shortcuts to upload and edit your profile.
 - **Protected account page** — `/profile` requires sign-in and includes the
   account welcome, name editing, avatar upload, and sign-out.
 
@@ -65,7 +61,7 @@ post permissions are unchanged by the redesign.
 | Styling   | Tailwind CSS v4 (via `@tailwindcss/postcss`) |
 | Backend   | Supabase (Postgres, Auth, Storage) |
 | Auth glue | `@supabase/ssr`, `@supabase/supabase-js` |
-| AI        | `openai` SDK pointed at Groq / OpenRouter / Hugging Face |
+| AI        | Gemini via the OpenAI-compatible `openai` SDK |
 | Hosting   | Vercel |
 
 ---
@@ -74,11 +70,11 @@ post permissions are unchanged by the redesign.
 
 ```
 app/
-  page.tsx               Public featured feed; full captions after sign-in
+  page.tsx               Shared feed with post filters
   layout.tsx             Root layout, fonts
   globals.css            Tailwind + theme tokens
   _actions/
-    posts.ts            Server actions (upload/update/delete/caption/vote)
+    posts.ts            Server actions for posts, captions, context, and votes
   _components/posts/
     ImageCard.tsx       One image + captions + voting UI
     PostPhoto.tsx       Uncropped photo with a proportion-fitting inner frame
@@ -88,12 +84,13 @@ app/
   complete-profile/      First/last name onboarding
   profile/page.tsx       Server-side authentication gate
   profile/ProfileForm.tsx Account welcome, edit name/avatar, sign out
+  dashboard/page.tsx      Personal post and activity dashboard
   new/
     page.tsx             New-post page
     NewPostForm.tsx      Upload-file vs paste-URL form
 
 lib/
-  ai/captions.ts         AI caption pipeline + provider fallback
+  ai/captions.ts         Two-step Gemini caption pipeline
   upload-limits.ts       Shared upload size validation
   supabase/
     client.ts            Browser Supabase client
@@ -109,43 +106,20 @@ supabase/migrations/     Versioned SQL schema (tables, RLS, functions, indexes)
 
 ## How it works
 
-A quick map — see [`docs/architecture.md`](./docs/architecture.md) for the full
-walkthrough with diagrams.
-
 - **Auth & session.** Google OAuth via Supabase; `proxy.ts` middleware refreshes
   session cookies on matched requests. The homepage allows signed-out browsing;
   protected routes require login and signed-in homepage users complete onboarding.
-- **Posting, captions & voting.** All mutations run through **server actions**
-  (`app/_actions/posts.ts`) with ownership re-checked on top of RLS. Captions come from
-  a two-step AI pipeline (`lib/ai/captions.ts`) that persists the exact prompts used.
-  Voting is atomic via the `toggle_vote` function, with optimistic UI.
+- **Posting, captions & voting.** Server actions re-check ownership on top of
+  RLS. Gemini analyzes the image/context, then generates one meme caption.
+  Voting is atomic via `toggle_vote`, with optimistic UI.
 - **Images.** Files go to Supabase Storage; only public URLs are stored in
   Postgres. `next.config.ts` allowlists the storage host for `next/image`.
 
 ## Database
 
-### Behind the punchline
-
-The vision model receives an image URL and this instruction:
-
-> Describe this image factually in 1-2 sentences, focusing on the main subject, action, and setting.
-
-The text model then receives this template, with `{description}` replaced by
-the vision output:
-
-```text
-Here is a factual description of a photo: "{description}"
-
-Write one short, witty, funny caption for this photo as if for a caption contest. Return only the caption text, no quotes, no extra commentary.
-```
-
-Each generation saves the exact instructions in `vision_prompt` and
-`caption_prompt`, alongside its description and caption. Existing rows created
-before prompt logging may have null prompt fields. This keeps prompt records
-for the assignment without adding developer details to the browsing UI.
-
-Schema lives in [`supabase/migrations/`](./supabase/migrations) (10 ordered,
-idempotent SQL files) and is the source of truth.
+Each generation saves the exact analysis and caption prompts in `vision_prompt`
+and `caption_prompt`. Schema lives in
+[`supabase/migrations/`](./supabase/migrations) and is the source of truth.
 
 **Tables:** `profiles` (1:1 with `auth.users`), `images`, `captions` (many per
 image, storing the AI output *and* the prompts used to generate it), `votes`

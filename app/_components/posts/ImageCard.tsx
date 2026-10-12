@@ -20,6 +20,7 @@ type Caption = {
 type ImageCardProps = {
     imageId: string;
     imageUrl: string;
+    authorName?: string | null;
     context?: string | null;
     captions: Caption[];
     currentUserId: string;
@@ -93,7 +94,7 @@ function VoteControls({
 // captions to visually "jump" between a special top slot and a collapsed
 // list). The highest-voted caption is labelled "Top caption" in place,
 // without moving position.
-export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdBy, context, priority = false }: ImageCardProps) {
+export function ImageCard({ imageId, imageUrl, authorName, captions, currentUserId, createdBy, context, priority = false }: ImageCardProps) {
     const [isGenerating, startGenerateTransition] = useTransition();
     const [isDeleting, startDeleteTransition] = useTransition();
     const [isSavingContext, startSaveContextTransition] = useTransition();
@@ -251,6 +252,7 @@ export function ImageCard({ imageId, imageUrl, captions, currentUserId, createdB
     return (
         <article className="sahur-post group flex flex-col">
             <PostPhoto src={imageUrl} priority={priority} />
+            {authorName && <p className="px-3 pt-2 text-xs font-bold text-[#71523c]">Posted by {authorName}</p>}
 
             <div className="flex flex-col gap-4 p-3">
                 <p className="sahur-eyebrow">{isOwner ? 'Your photo. Your chaos.' : 'AI wrote it. You judge it.'}</p>

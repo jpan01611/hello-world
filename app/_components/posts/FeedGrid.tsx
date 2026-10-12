@@ -9,6 +9,7 @@ type Caption = { id: string; created_by: string; caption: string; created_at: st
 export type FeedImage = {
     id: string;
     created_by: string;
+    author_name?: string | null;
     image_url: string;
     context: string | null;
     created_at: string;
@@ -17,10 +18,11 @@ export type FeedImage = {
 
 type FeedFilter = 'all' | 'mine' | 'unvoted' | 'no-caption';
 
-export function FeedGrid({ images, currentUserId, showNewPost = true }: {
+export function FeedGrid({ images, currentUserId, showNewPost = true, showFilters = true }: {
     images: FeedImage[];
     currentUserId: string;
     showNewPost?: boolean;
+    showFilters?: boolean;
 }) {
     const [filter, setFilter] = useState<FeedFilter>('all');
     const filteredImages = useMemo(() => images.filter((image) => {
@@ -41,7 +43,7 @@ export function FeedGrid({ images, currentUserId, showNewPost = true }: {
 
     return (
         <>
-            <div className="mb-6 flex flex-wrap items-center gap-2" role="group" aria-label="Filter posts">
+            {showFilters && <div className="mb-6 flex flex-wrap items-center gap-2" role="group" aria-label="Filter posts">
                 {filters.map((item) => (
                     <button
                         key={item.value}
@@ -53,7 +55,7 @@ export function FeedGrid({ images, currentUserId, showNewPost = true }: {
                         {item.label}
                     </button>
                 ))}
-            </div>
+            </div>}
             <div className="grid grid-cols-1 items-start gap-6 min-[460px]:grid-cols-2 lg:grid-cols-3">
                 {showNewPost && <NewPostTile />}
                 {filteredImages.map((image, index) => (
@@ -61,6 +63,7 @@ export function FeedGrid({ images, currentUserId, showNewPost = true }: {
                         key={image.id}
                         imageId={image.id}
                         imageUrl={image.image_url}
+                        authorName={image.author_name}
                         context={image.context}
                         captions={image.captions}
                         currentUserId={currentUserId}

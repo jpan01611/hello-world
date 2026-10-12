@@ -58,6 +58,18 @@ export default async function Home() {
     const uniqueImages = images
         ? Array.from(new Map(images.map((img: ImageRow) => [img.id, img])).values())
         : images;
+    const authorIds = Array.from(new Set((uniqueImages ?? []).map((image: ImageRow) => image.created_by)));
+    const { data: profiles } = user && authorIds.length > 0
+        ? await supabase.from('profiles').select('id, first_name, last_name').in('id', authorIds)
+        : { data: [] };
+    const authorNames = new Map((profiles ?? []).map((profile) => [
+        profile.id,
+        [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Columbia creator',
+    ]));
+    const imagesWithAuthors = (uniqueImages ?? []).map((image: ImageRow) => ({
+        ...image,
+        author_name: authorNames.get(image.created_by) ?? 'Columbia creator',
+    }));
 
     return (
         <div className="sahur-page">
@@ -108,7 +120,7 @@ export default async function Home() {
                 {error ? (
                     <p className="text-sm text-red-600">Error loading images: {error.message}</p>
                 ) : user ? (
-                    <FeedGrid images={(uniqueImages ?? []) as FeedImage[]} currentUserId={user.id} />
+                    <FeedGrid images={imagesWithAuthors as FeedImage[]} currentUserId={user.id} />
                 ) : (
                     <div className="grid grid-cols-1 items-start gap-6 min-[460px]:grid-cols-2 lg:grid-cols-3">
                         {publicPosts.map((post, index) => (

@@ -8,14 +8,19 @@ export default async function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
 
-    const { data: images, error } = await supabase
+    const [{ data: profile }, { data: images, error }] = await Promise.all([
+        supabase.from('profiles').select('first_name, last_name').eq('id', user.id).maybeSingle(),
+        supabase
         .from('images')
         .select('id, created_by, image_url, context, created_at, captions(id, created_by, caption, created_at, votes(user_id, value))')
         .eq('created_by', user.id)
         .order('created_at', { foreignTable: 'captions', ascending: true })
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }),
+    ]);
 
-    const posts = (images ?? []) as FeedImage[];
+    const imageRows = images ?? [];
+    const authorName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'You';
+    const posts = imageRows.map((post) => ({ ...post, author_name: authorName })) as FeedImage[];
     const captionCount = posts.reduce((count, post) => count + post.captions.length, 0);
     const voteCount = posts.reduce((count, post) => count + post.captions.reduce((inner, caption) => inner + caption.votes.length, 0), 0);
 
@@ -41,7 +46,7 @@ export default async function DashboardPage() {
                             <div className="sahur-panel p-4"><p className="sahur-eyebrow">AI captions</p><p className="mt-2 text-3xl font-black">{captionCount}</p></div>
                             <div className="sahur-panel p-4"><p className="sahur-eyebrow">Community votes</p><p className="mt-2 text-3xl font-black">{voteCount}</p></div>
                         </div>
-                        {posts.length > 0 ? <FeedGrid images={posts} currentUserId={user.id} showNewPost={false} /> : (
+                        {posts.length > 0 ? <FeedGrid images={posts} currentUserId={user.id} showNewPost={false} showFilters={false} /> : (
                             <div className="sahur-panel text-center">
                                 <h2 className="text-2xl font-black">Your wall is ready.</h2>
                                 <p className="mt-2">Upload a NYC or Columbia moment and give the AI some context.</p>

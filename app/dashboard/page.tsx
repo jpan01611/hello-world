@@ -34,7 +34,10 @@ export default async function DashboardPage() {
                         <h1 className="mt-1 text-4xl font-black tracking-tight">Creator dashboard</h1>
                         <p className="mt-2 max-w-xl leading-relaxed">Keep track of your photos, caption ideas, and the votes your posts are collecting.</p>
                     </div>
-                    <Link href="/new" className="sahur-button">Upload a new post +</Link>
+                    <div className="flex flex-wrap gap-3">
+                        <Link href="/profile" className="sahur-button-secondary">My profile</Link>
+                        <Link href="/new" className="sahur-button">Upload a new post +</Link>
+                    </div>
                 </header>
 
                 {error ? (

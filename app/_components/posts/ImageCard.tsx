@@ -277,8 +277,6 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
                     <div className="flex items-start justify-between gap-2">
                         {currentContext ? (
                             <p className="flex-1 rounded-lg bg-[#fff1d7] px-3 py-2 text-sm leading-relaxed"><span className="font-bold">Creator context:</span> {currentContext}</p>
-                        ) : isOwner ? (
-                            <p className="flex-1 rounded-lg bg-[#fff1d7] px-3 py-2 text-sm text-[#71523c]">Add context to guide the NYC/Columbia caption.</p>
                         ) : null}
                         {isOwner && <button type="button" onClick={() => setIsEditingContext(true)} className="sahur-button-ghost sahur-caption-delete">{currentContext ? 'Edit context' : 'Add context'}</button>}
                     </div>

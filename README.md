@@ -31,11 +31,22 @@ post permissions are unchanged by the redesign.
   and last name before entering the app. Users can edit their name and upload
   an avatar from the Profile page.
 - **Gallery feed (homepage)** — a shared grid of posts with filters for all
-  posts, your posts, unvoted posts, and posts without captions.
+  posts, your posts, unvoted posts, and posts without captions. Each post shows
+  exactly one caption: the owner's selected caption, or the highest-rated
+  caption when no selection has been made.
+- **Anonymous demo** — signed-out visitors can open a local six-photo slideshow,
+  generate prewritten captions, vote with reversible up/down controls, jump
+  between photos with the segmented progress bar, and continue to the
+  `/intrigued` sign-up prompt.
+- **Post details** — signed-in users can click any post to open `/posts/[id]`.
+  The details page preserves caption creation order and exposes all generated
+  captions, voting, owner editing, caption generation, deletion, and the
+  checkbox for choosing the caption shown on the homepage.
 - **New posts** — add a photo either by uploading a file (stored in Supabase
-  Storage) or by pasting an image URL. Pick a file or drag one onto the upload
-  area; non-image files, multiple files, and files over 900 KB are rejected
-  with an inline message before submission.
+  Storage) or by pasting an image URL. A slider switch selects the input mode.
+  The file flow supports drag-and-drop, preview, changing/removing the selected
+  photo, and inline validation. Non-image files, multiple files, and files over
+  2 MB are rejected before submission.
 - **AI captions** — Gemini first analyzes the photo and creator context, then
   generates a meme statement grounded in the photo, context, New York City,
   and Columbia University. The exact prompts are saved with each caption.
@@ -44,7 +55,8 @@ post permissions are unchanged by the redesign.
   is restricted to logged-in users at both the server-action and database
   (RLS) level.
 - **Owner controls** — owners can edit context, generate captions, delete
-  captions, and delete posts. Deletes cascade to related votes.
+  captions, choose the homepage caption, and delete posts. Deletes cascade to
+  related votes.
 - **Creator dashboard** — `/dashboard` shows your posts, caption count, vote
   count, and shortcuts to upload and edit your profile.
 - **Protected account page** — `/profile` requires sign-in and includes the
@@ -76,9 +88,12 @@ app/
   _actions/
     posts.ts            Server actions for posts, captions, context, and votes
   _components/posts/
-    ImageCard.tsx       One image + captions + voting UI
+    ImageCard.tsx       Post card/details content, captions, and voting UI
     PostPhoto.tsx       Uncropped photo with a proportion-fitting inner frame
     NewPostTile.tsx     "+" grid tile linking to /new
+  _components/demo/
+    DemoExperience.tsx  Anonymous six-photo slideshow demo
+  posts/[id]/page.tsx   Signed-in post details page
   login/page.tsx         Google sign-in
   auth/callback/route.ts OAuth code→session exchange
   complete-profile/      First/last name onboarding
@@ -98,7 +113,8 @@ lib/
     middleware.ts        Session-cookie refresh helper
 
 proxy.ts                 Next.js middleware → refreshes auth session cookies
-next.config.ts           Allowlists Supabase Storage host for next/image
+next.config.ts           Storage host and 2.2 MB Server Action body limit
+public/demo-photos/      Six local images used by the anonymous demo
 supabase/migrations/     Versioned SQL schema (tables, RLS, functions, indexes)
 ```
 
@@ -111,9 +127,12 @@ supabase/migrations/     Versioned SQL schema (tables, RLS, functions, indexes)
   protected routes require login and signed-in homepage users complete onboarding.
 - **Posting, captions & voting.** Server actions re-check ownership on top of
   RLS. Gemini analyzes the image/context, then generates one meme caption.
-  Voting is atomic via `toggle_vote`, with optimistic UI.
+  Voting is atomic via `toggle_vote`, with optimistic UI. The homepage renders
+  one featured caption per post; the details page is the management view for
+  the complete caption list.
 - **Images.** Files go to Supabase Storage; only public URLs are stored in
-  Postgres. `next.config.ts` allowlists the storage host for `next/image`.
+  Postgres. Upload validation is shared by the client and server at 2 MB, while
+  the Server Action request limit is 2.2 MB to allow multipart overhead.
 
 ## Database
 
@@ -123,7 +142,8 @@ and `caption_prompt`. Schema lives in
 
 **Tables:** `profiles` (1:1 with `auth.users`), `images`, `captions` (many per
 image, storing the AI output *and* the prompts used to generate it), `votes`
-(unique per user+caption). Foreign keys cascade on delete.
+(unique per user+caption). `images.selected_caption_id` stores the owner's
+homepage choice. Foreign keys cascade on delete.
 
 **RLS** is enabled on every table with the strictest rules that don't break the
 app: authenticated-only raw-table reads, owner-restricted writes, and one vote

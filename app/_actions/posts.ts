@@ -9,6 +9,26 @@ import { uploadSizeError } from '@/lib/upload-limits';
 const IMAGES_BUCKET = 'images';
 const MAX_CONTEXT_LENGTH = 500;
 
+async function generateCaptionForImage(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    imageId: string,
+    imageUrl: string,
+    context: string | null,
+    userId: string,
+) {
+    const { description, prompt: visionPrompt } = await generateDescription(imageUrl, context);
+    const { caption, prompt: captionPrompt } = await generateFunnyCaption(description, context);
+    const { error } = await supabase.from('captions').insert({
+        image_id: imageId,
+        created_by: userId,
+        description,
+        caption,
+        vision_prompt: visionPrompt,
+        caption_prompt: captionPrompt,
+    });
+    if (error) throw error;
+}
+
 // Server action: uploads the submitted file to Supabase Storage, then
 // inserts a row (with the public URL) into the `images` table. This
 // respects the project's RLS policies: only a logged-in user can insert,
@@ -19,6 +39,9 @@ export async function uploadImageAction(formData: FormData) {
 
     if (!(file instanceof File) || file.size === 0) {
         throw new Error('Please choose an image file');
+    }
+    if (!file.type.startsWith('image/')) {
+        throw new Error('Please choose a JPG, PNG, GIF, or WebP image');
     }
     const sizeError = uploadSizeError(file);
     if (sizeError) throw new Error(sizeError);
@@ -45,18 +68,21 @@ export async function uploadImageAction(formData: FormData) {
         .from(IMAGES_BUCKET)
         .getPublicUrl(fileName);
 
-    const { error: dbError } = await supabase
+    const { data: image, error: dbError } = await supabase
         .from('images')
         .insert({
             created_by: user.id,
             image_url: urlData.publicUrl,
             context: typeof context === 'string' ? context.trim() || null : null,
-        });
+        })
+        .select('id')
+        .single();
 
     if (dbError) {
         throw dbError;
     }
 
+    await generateCaptionForImage(supabase, image.id, urlData.publicUrl, typeof context === 'string' ? context.trim() || null : null, user.id);
     redirect('/');
 }
 
@@ -88,18 +114,21 @@ export async function uploadImageUrlAction(formData: FormData) {
         throw new Error('Not logged in');
     }
 
-    const { error: dbError } = await supabase
+    const { data: image, error: dbError } = await supabase
         .from('images')
         .insert({
             created_by: user.id,
             image_url: parsed.toString(),
             context: typeof context === 'string' ? context.trim() || null : null,
-        });
+        })
+        .select('id')
+        .single();
 
     if (dbError) {
         throw dbError;
     }
 
+    await generateCaptionForImage(supabase, image.id, parsed.toString(), typeof context === 'string' ? context.trim() || null : null, user.id);
     redirect('/');
 }
 
@@ -139,6 +168,20 @@ export async function updateImageContextAction(imageId: string, formData: FormDa
 
     revalidatePath('/');
     revalidatePath('/dashboard');
+}
+
+export async function selectFeaturedCaptionAction(imageId: string, captionId: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not logged in');
+
+    const { error } = await supabase
+        .from('images')
+        .update({ selected_caption_id: captionId })
+        .eq('id', imageId)
+        .eq('created_by', user.id);
+    if (error) throw error;
+    revalidatePath('/');
 }
 
 // Server action: deletes a post. RLS (and the explicit `created_by` filter

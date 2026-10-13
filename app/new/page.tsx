@@ -14,7 +14,7 @@ export default async function NewPostPage() {
     return (
         <div className="sahur-page flex flex-1 flex-col items-center px-5 py-12">
             <div className="w-full max-w-xl">
-                <Link href="/" className="sahur-button-ghost mb-6 inline-flex">
+                <Link href="/" className="sahur-button-ghost sahur-caption-delete mb-6 inline-flex">
                     ← Back to the meme wall
                 </Link>
 

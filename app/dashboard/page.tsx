@@ -12,7 +12,7 @@ export default async function DashboardPage() {
         supabase.from('profiles').select('first_name, last_name').eq('id', user.id).maybeSingle(),
         supabase
         .from('images')
-        .select('id, created_by, image_url, context, created_at, captions(id, created_by, caption, created_at, votes(user_id, value))')
+        .select('id, created_by, image_url, context, selected_caption_id, created_at, captions:captions!captions_image_id_fkey(id, created_by, caption, created_at, votes(user_id, value))')
         .eq('created_by', user.id)
         .order('created_at', { foreignTable: 'captions', ascending: true })
         .order('created_at', { ascending: false }),

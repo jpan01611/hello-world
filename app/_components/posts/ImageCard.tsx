@@ -1,8 +1,9 @@
 'use client';
 
 import { PostPhoto } from './PostPhoto';
-import { useOptimistic, useState, useTransition } from 'react';
-import { deleteCaptionAction, deleteImageAction, generateCaptionAction, updateImageContextAction, voteOnCaptionAction } from '@/app/_actions/posts';
+import { useOptimistic, useState, useTransition, type MouseEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { deleteCaptionAction, deleteImageAction, generateCaptionAction, selectFeaturedCaptionAction, updateImageContextAction, voteOnCaptionAction } from '@/app/_actions/posts';
 
 type Vote = {
     user_id: string;
@@ -22,10 +23,13 @@ type ImageCardProps = {
     imageUrl: string;
     authorName?: string | null;
     context?: string | null;
+    selectedCaptionId?: string | null;
     captions: Caption[];
     currentUserId: string;
     createdBy: string;
     priority?: boolean;
+    displayAllCaptions?: boolean;
+    showCaptionManagement?: boolean;
 };
 
 type VoteAction = {
@@ -81,7 +85,7 @@ function VoteControls({
                 disabled={pending}
                 aria-label="Downvote"
                 aria-pressed={mine === -1}
-                className="sahur-vote"
+                className="sahur-vote sahur-vote-down"
             >
                 ▼
             </button>
@@ -94,17 +98,19 @@ function VoteControls({
 // captions to visually "jump" between a special top slot and a collapsed
 // list). The highest-voted caption is labelled "Top caption" in place,
 // without moving position.
-export function ImageCard({ imageId, imageUrl, authorName, captions, currentUserId, createdBy, context, priority = false }: ImageCardProps) {
+export function ImageCard({ imageId, imageUrl, authorName, captions, currentUserId, createdBy, context, selectedCaptionId, priority = false, displayAllCaptions = true, showCaptionManagement = true }: ImageCardProps) {
     const [isGenerating, startGenerateTransition] = useTransition();
     const [isDeleting, startDeleteTransition] = useTransition();
     const [isSavingContext, startSaveContextTransition] = useTransition();
     const [deletingCaptionId, setDeletingCaptionId] = useState<string | null>(null);
     const [isVoting, startVoteTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
-    const [showAllCaptions, setShowAllCaptions] = useState(false);
+    const [showAllCaptions, setShowAllCaptions] = useState(displayAllCaptions);
     const [isEditingContext, setIsEditingContext] = useState(false);
     const [currentContext, setCurrentContext] = useState(context ?? '');
+    const [featuredCaptionId, setFeaturedCaptionId] = useState(selectedCaptionId);
     const isOwner = currentUserId === createdBy;
+    const router = useRouter();
 
     function handleDelete() {
         if (!window.confirm('Delete this post and all its captions and votes?')) return;
@@ -128,6 +134,17 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to update context');
             }
+        });
+    }
+
+    function handleFeaturedCaptionChange(captionId: string, checked: boolean) {
+        if (!checked) return;
+        const previousCaptionId = featuredCaptionId;
+        setFeaturedCaptionId(captionId);
+        setError(null);
+        selectFeaturedCaptionAction(imageId, captionId).catch((err) => {
+            setFeaturedCaptionId(previousCaptionId);
+            setError(err instanceof Error ? err.message : 'Failed to select caption');
         });
     }
 
@@ -195,6 +212,12 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
         });
     }
 
+    function handlePostClick(event: MouseEvent<HTMLElement>) {
+        const target = event.target as HTMLElement;
+        if (target.closest('button, a, input, textarea, select, form')) return;
+        router.push(`/posts/${imageId}`);
+    }
+
     const scores = optimisticCaptions.map((c) => netVotes(c));
     const topScore = scores.reduce<number | null>((best, score) => best === null || score > best ? score : best, null);
     const topScoreCount = scores.filter((s) => s === topScore).length;
@@ -205,7 +228,8 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
     // Feature the best-rated caption by default (priority 1: highest net
     // votes; priority 2, among ties, the newest). The rest stay collapsed
     // behind a "show more" toggle so each post reads cleanly at a glance.
-    const featuredIndex = optimisticCaptions.length === 0
+    const selectedIndex = featuredCaptionId ? optimisticCaptions.findIndex((caption) => caption.id === featuredCaptionId) : -1;
+    const defaultFeaturedIndex = optimisticCaptions.length === 0
         ? -1
         : optimisticCaptions.reduce((bestIdx, c, i) => {
             const best = optimisticCaptions[bestIdx];
@@ -214,6 +238,7 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
             if (scores[i] === scores[bestIdx] && c.created_at === best.created_at && c.id > best.id) return i;
             return bestIdx;
         }, 0);
+    const featuredIndex = selectedIndex !== -1 ? selectedIndex : defaultFeaturedIndex;
     const otherCaptions = optimisticCaptions.filter((_, i) => i !== featuredIndex);
 
     function renderCaption(c: Caption) {
@@ -233,15 +258,21 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
                         {hasUniqueTop && netVotes(c) === topScore && (
                             <span className="sahur-tag">Top rated</span>
                         )}
-                        {c.created_by === currentUserId && (
-                            <button
-                                type="button"
-                                onClick={() => handleDeleteCaption(c.id)}
-                                disabled={isDeleting || deletingCaptionId === c.id}
-                                className="sahur-button-ghost sahur-caption-delete"
-                            >
-                                {deletingCaptionId === c.id ? 'Deleting…' : 'Delete'}
-                            </button>
+                        {showCaptionManagement && c.created_by === currentUserId && (
+                            <>
+                                <label className="flex items-center gap-2 text-xs font-bold text-[#71523c]">
+                                    <input
+                                        type="checkbox"
+                                        checked={featuredCaptionId === c.id}
+                                        onChange={(event) => handleFeaturedCaptionChange(c.id, event.target.checked)}
+                                        className="h-4 w-4 accent-[#31715e]"
+                                    />
+                                    Use on home feed
+                                </label>
+                                <button type="button" onClick={() => handleDeleteCaption(c.id)} disabled={isDeleting || deletingCaptionId === c.id} className="sahur-button-ghost sahur-caption-delete">
+                                    {deletingCaptionId === c.id ? 'Deleting…' : 'Delete'}
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>
@@ -250,7 +281,10 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
     }
 
     return (
-        <article className="sahur-post group flex flex-col">
+        <article
+            className="sahur-post group flex cursor-pointer flex-col"
+            onClick={handlePostClick}
+        >
             <PostPhoto src={imageUrl} priority={priority} />
             {authorName && <p className="px-3 pt-2 text-xs font-bold text-[#71523c]">Posted by {authorName}</p>}
 
@@ -281,43 +315,42 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
                         {isOwner && <button type="button" onClick={() => setIsEditingContext(true)} className="sahur-button-ghost sahur-caption-delete">{currentContext ? 'Edit context' : 'Add context'}</button>}
                     </div>
                 )}
-                {isOwner && <button
+                {error && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{error}</p>}
+
+                {optimisticCaptions.length > 0 && (
+                    <ul className="flex flex-col gap-2">
+                        {displayAllCaptions && showAllCaptions
+                            ? optimisticCaptions.map(renderCaption)
+                            : featuredIndex !== -1 && renderCaption(optimisticCaptions[featuredIndex])}
+                    </ul>
+                )}
+
+                {showCaptionManagement && displayAllCaptions && otherCaptions.length > 0 && (
+                    <button
+                        type="button"
+                        aria-expanded={showAllCaptions}
+                        onClick={() => setShowAllCaptions((v) => !v)}
+                        className="text-left text-sm font-bold text-[#71523c] underline underline-offset-4"
+                    >
+                        {showAllCaptions
+                            ? 'Hide other captions'
+                            : `Show ${otherCaptions.length} more caption${otherCaptions.length === 1 ? '' : 's'}`}
+                    </button>
+                )}
+                {isOwner && showCaptionManagement && <button
                     type="button"
                     onClick={handleGenerateCaption}
                     disabled={isGenerating}
                     className={`sahur-button w-full ${isGenerating ? 'sahur-loading' : ''}`}
                 >
                     {isGenerating
-                        ? 'Generating…'
+                        ? 'Writing caption…'
                         : optimisticCaptions.length > 0
                             ? 'Generate another caption'
                             : 'Generate Caption'}
                 </button>}
-
-                {isOwner && (
+                {isOwner && showCaptionManagement && (
                     <button type="button" onClick={handleDelete} disabled={isDeleting} className="sahur-button-ghost w-full">{isDeleting ? 'Deleting…' : 'Delete post'}</button>
-                )}
-
-                {error && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{error}</p>}
-
-                {optimisticCaptions.length > 0 && (
-                    <ul className="flex flex-col gap-2">
-                        {featuredIndex !== -1 && renderCaption(optimisticCaptions[featuredIndex])}
-                        {showAllCaptions && otherCaptions.map(renderCaption)}
-                    </ul>
-                )}
-
-                {otherCaptions.length > 0 && (
-                    <button
-                        type="button"
-                        aria-expanded={showAllCaptions}
-                        onClick={() => setShowAllCaptions((v) => !v)}
-                        className="sahur-button-secondary w-full"
-                    >
-                        {showAllCaptions
-                            ? 'Hide other captions'
-                            : `Show ${otherCaptions.length} more caption${otherCaptions.length === 1 ? '' : 's'}`}
-                    </button>
                 )}
             </div>
         </article>

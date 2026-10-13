@@ -12,17 +12,20 @@ export type FeedImage = {
     author_name?: string | null;
     image_url: string;
     context: string | null;
+    selected_caption_id: string | null;
     created_at: string;
     captions: Caption[];
 };
 
 type FeedFilter = 'all' | 'mine' | 'unvoted' | 'no-caption';
 
-export function FeedGrid({ images, currentUserId, showNewPost = true, showFilters = true }: {
+export function FeedGrid({ images, currentUserId, showNewPost = true, showFilters = true, displayAllCaptions = true, showCaptionManagement = true }: {
     images: FeedImage[];
     currentUserId: string;
     showNewPost?: boolean;
     showFilters?: boolean;
+    displayAllCaptions?: boolean;
+    showCaptionManagement?: boolean;
 }) {
     const [filter, setFilter] = useState<FeedFilter>('all');
     const filteredImages = useMemo(() => images.filter((image) => {
@@ -65,10 +68,13 @@ export function FeedGrid({ images, currentUserId, showNewPost = true, showFilter
                         imageUrl={image.image_url}
                         authorName={image.author_name}
                         context={image.context}
+                        selectedCaptionId={image.selected_caption_id}
                         captions={image.captions}
                         currentUserId={currentUserId}
                         createdBy={image.created_by}
                         priority={index === 0}
+                        displayAllCaptions={displayAllCaptions}
+                        showCaptionManagement={showCaptionManagement}
                     />
                 ))}
             </div>

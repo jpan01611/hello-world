@@ -1,14 +1,16 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { PostPhoto } from './_components/posts/PostPhoto';
 import { createClient } from '@/lib/supabase/server';
 import { FeedGrid, type FeedImage } from './_components/posts/FeedGrid';
+import { DemoExperience } from './_components/demo/DemoExperience';
+import { PublicFeed } from './_components/public/PublicFeed';
 
 type ImageRow = {
     id: string;
     created_by: string;
     image_url: string;
     context: string | null;
+    selected_caption_id: string | null;
     created_at: string;
     captions: {
         id: string;
@@ -45,7 +47,7 @@ export default async function Home() {
     // position stays stable regardless of vote changes.
     const { data: images, error: imageError } = user ? await supabase
         .from('images')
-        .select('id, created_by, image_url, context, created_at, captions(id, created_by, caption, created_at, votes(user_id, value))')
+        .select('id, created_by, image_url, context, selected_caption_id, created_at, captions:captions!captions_image_id_fkey(id, created_by, caption, created_at, votes(user_id, value))')
         .order('created_at', { foreignTable: 'captions', ascending: true })
         .order('created_at', { ascending: false }) : { data: null, error: null };
     const error = publicFeed?.error ?? imageError;
@@ -99,19 +101,34 @@ export default async function Home() {
                     </nav>
                 </header>
 
-                <section className="relative mb-10 overflow-hidden rounded-[2rem] border-2 border-[#302017] bg-[#493024] px-6 py-10 text-[#fff9ec] shadow-[6px_7px_0_#bda487] sm:px-10">
-                    <p className="mb-4 text-xs font-bold uppercase tracking-[.2em] text-[#dbf575]">Good photos. Questionable punchlines.</p>
-                    <h1 className="max-w-3xl text-4xl font-black leading-[1.05] tracking-tight sm:text-6xl">
-                        Bring the photo.<br />We bring the <span className="text-[#ffae70]">chaos.</span>
-                    </h1>
-                    <p className="mt-5 max-w-xl text-base leading-relaxed text-[#e4ccb1]">
-                        Dorm lore, subway moments, weekend side quests. Turn your photos into AI punchlines and let the crowd pick the bangers.
-                    </p>
-                    <div className="mt-7 flex flex-wrap gap-3">
-                        <Link href={user ? '/new' : '/login'} className="sahur-button">{user ? 'Drop a photo +' : 'Sign up & make a caption'}</Link>
-                        <span className="inline-flex items-center rounded-xl border border-[#a78669] px-4 py-2 text-xs font-semibold">Photo → AI caption → crowd vote</span>
+                {user ? (
+                    <section className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border-2 border-[#302017] bg-[#fff9ec] p-4 shadow-[4px_5px_0_#49302426]">
+                        <div>
+                            <p className="sahur-eyebrow">The lodge is open</p>
+                            <h1 className="mt-1 text-2xl font-black tracking-tight">Ready to drop some chaos?</h1>
+                        </div>
+                        <Link href="/new" className="sahur-button">Drop a photo +</Link>
+                    </section>
+                ) : <section className="relative mb-10 overflow-hidden rounded-[2rem] border-2 border-[#302017] bg-[#493024] px-6 py-10 text-[#fff9ec] shadow-[6px_7px_0_#bda487] sm:px-10">
+                    <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                        <div>
+                            <p className="mb-4 text-xs font-bold uppercase tracking-[.2em] text-[#dbf575]">Good photos. Questionable punchlines.</p>
+                            <h1 className="max-w-3xl text-4xl font-black leading-[1.05] tracking-tight sm:text-6xl">
+                                Bring the photo.<br />We bring the <span className="text-[#ffae70]">chaos.</span>
+                            </h1>
+                            <p className="mt-5 max-w-xl text-base leading-relaxed text-[#e4ccb1]">
+                                Dorm lore, subway moments, weekend side quests. Turn your photos into AI punchlines and let the crowd pick the bangers.
+                            </p>
+                            <div className="mt-7 flex flex-wrap gap-3">
+                                <Link href={user ? '/new' : '/login'} className="sahur-button">{user ? 'Drop a photo +' : 'Sign up & make a caption'}</Link>
+                                <span className="inline-flex items-center rounded-xl border border-[#a78669] px-4 py-2 text-xs font-semibold">Photo → AI caption → crowd vote</span>
+                            </div>
+                        </div>
+                        <div className="flex justify-center md:justify-end">
+                            <DemoExperience />
+                        </div>
                     </div>
-                </section>
+                </section>}
                 <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                     <div><p className="sahur-eyebrow">The community corkboard</p><h2 className="mt-1 text-2xl font-black">Fresh from the lodge</h2></div>
                     <span className="sahur-tag">{user ? 'Tap a vote. Settle the debate.' : 'Top captions, open to everyone.'}</span>
@@ -120,21 +137,14 @@ export default async function Home() {
                 {error ? (
                     <p className="text-sm text-red-600">Error loading images: {error.message}</p>
                 ) : user ? (
-                    <FeedGrid images={imagesWithAuthors as FeedImage[]} currentUserId={user.id} />
-                ) : (
-                    <div className="grid grid-cols-1 items-start gap-6 min-[460px]:grid-cols-2 lg:grid-cols-3">
-                        {publicPosts.map((post, index) => (
-                            <article key={post.id} className="sahur-post">
-                                <PostPhoto src={post.image_url} priority={index === 0} />
-                                <div className="p-3">
-                                    <p className="text-base font-bold leading-relaxed">{post.caption ?? 'The punchline is still loading in real life.'}</p>
-                                    {post.caption !== null && <p className="sahur-tag mt-3">Top rated · {post.score ?? 0} net votes</p>}
-                                    <Link href="/login" className="sahur-button-ghost mt-4 w-full">Sign in to vote & see more</Link>
-                                </div>
-                            </article>
-                        ))}
-                    </div>
-                )}
+                    <FeedGrid
+                        images={imagesWithAuthors as FeedImage[]}
+                        currentUserId={user.id}
+                        showNewPost={false}
+                        displayAllCaptions={false}
+                        showCaptionManagement={false}
+                    />
+                ) : <PublicFeed posts={publicPosts} />}
                 {!error && !user && publicPosts.length === 0 && (
                     <div className="sahur-panel mt-6 text-center">
                         <h3 className="text-xl font-black">Quiet lodge. Loud potential.</h3>

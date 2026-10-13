@@ -231,7 +231,7 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
                     />
                     <div className="flex items-center gap-2">
                         {hasUniqueTop && netVotes(c) === topScore && (
-                            <span className="sahur-tag">Crowd pick</span>
+                            <span className="sahur-tag">Top rated</span>
                         )}
                         {c.created_by === currentUserId && (
                             <button

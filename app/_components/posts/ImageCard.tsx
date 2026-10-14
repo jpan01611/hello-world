@@ -218,16 +218,10 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
         router.push(`/posts/${imageId}`);
     }
 
-    const scores = optimisticCaptions.map((c) => netVotes(c));
-    const topScore = scores.reduce<number | null>((best, score) => best === null || score > best ? score : best, null);
-    const topScoreCount = scores.filter((s) => s === topScore).length;
-    // Only label a caption "Top caption" when there's a unique leader among
-    // 2+ captions — a tie (including all-zero) means no caption stands out.
-    const hasUniqueTop = optimisticCaptions.length > 1 && topScoreCount === 1;
-
     // Feature the best-rated caption by default (priority 1: highest net
     // votes; priority 2, among ties, the newest). The rest stay collapsed
     // behind a "show more" toggle so each post reads cleanly at a glance.
+    const scores = optimisticCaptions.map((caption) => netVotes(caption));
     const selectedIndex = featuredCaptionId ? optimisticCaptions.findIndex((caption) => caption.id === featuredCaptionId) : -1;
     const defaultFeaturedIndex = optimisticCaptions.length === 0
         ? -1
@@ -255,9 +249,6 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
                         onVote={handleVote}
                     />
                     <div className="flex items-center gap-2">
-                        {hasUniqueTop && netVotes(c) === topScore && (
-                            <span className="sahur-tag">Top rated</span>
-                        )}
                         {showCaptionManagement && c.created_by === currentUserId && (
                             <>
                                 <label className="flex items-center gap-2 text-xs font-bold text-[#71523c]">

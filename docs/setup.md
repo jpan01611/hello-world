@@ -54,6 +54,8 @@ run `NOTIFY pgrst, 'reload schema';` in the SQL editor and retry.
 | `0008_caption_prompts.sql` | `vision_prompt` / `caption_prompt` columns |
 | `0009_strict_rls.sql` | Restrict reads to authenticated users |
 | `0010_public_featured_feed.sql` | Public featured-feed RPC; post-owner-only caption insertion |
+| `0015_post_based_top_rated.sql` | Ranks the public Top rated filter by total post votes |
+| `0016_top_rated_home_caption.sql` | Ranks posts by the caption shown on the home feed |
 | `0011_post_context.sql` | Optional post context |
 | `0012_authenticated_profile_names.sql` | Authenticated profile-name updates |
 | `0013_selected_caption.sql` | Owner-selected homepage caption |

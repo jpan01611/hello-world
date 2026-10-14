@@ -34,6 +34,9 @@ post permissions are unchanged by the redesign.
   posts, your posts, unvoted posts, and posts without captions. Each post shows
   exactly one caption: the owner's selected caption, or the highest-rated
   caption when no selection has been made.
+- **Home-caption Top rated filter** — both feeds rank posts by the net votes of
+  the caption shown on the home feed: the owner's selected caption, or the
+  highest-rated fallback caption when no selection has been made.
 - **Anonymous demo** — signed-out visitors can open a local six-photo slideshow,
   generate prewritten captions, vote with reversible up/down controls, jump
   between photos with the segmented progress bar, and continue to the

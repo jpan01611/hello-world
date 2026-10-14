@@ -17,7 +17,20 @@ export type FeedImage = {
     captions: Caption[];
 };
 
-type FeedFilter = 'all' | 'mine' | 'unvoted' | 'no-caption';
+type FeedFilter = 'all' | 'top' | 'mine' | 'unvoted' | 'no-caption';
+
+function postScore(image: FeedImage) {
+    const selectedCaption = image.captions.find((caption) => caption.id === image.selected_caption_id);
+    const displayedCaption = selectedCaption ?? [...image.captions].sort((a, b) => {
+        const scoreDifference = b.votes.reduce((total, vote) => total + vote.value, 0)
+            - a.votes.reduce((total, vote) => total + vote.value, 0);
+        if (scoreDifference !== 0) return scoreDifference;
+        const dateDifference = b.created_at.localeCompare(a.created_at);
+        return dateDifference !== 0 ? dateDifference : b.id.localeCompare(a.id);
+    })[0];
+
+    return displayedCaption?.votes.reduce((score, vote) => score + vote.value, 0) ?? 0;
+}
 
 export function FeedGrid({ images, currentUserId, showNewPost = true, showFilters = true, displayAllCaptions = true, showCaptionManagement = true }: {
     images: FeedImage[];
@@ -28,17 +41,29 @@ export function FeedGrid({ images, currentUserId, showNewPost = true, showFilter
     showCaptionManagement?: boolean;
 }) {
     const [filter, setFilter] = useState<FeedFilter>('all');
-    const filteredImages = useMemo(() => images.filter((image) => {
-        if (filter === 'mine') return image.created_by === currentUserId;
-        if (filter === 'no-caption') return image.captions.length === 0;
-        if (filter === 'unvoted') {
-            return !image.captions.some((caption) => caption.votes.some((vote) => vote.user_id === currentUserId));
-        }
-        return true;
-    }), [currentUserId, filter, images]);
+    const filteredImages = useMemo(() => {
+        const matchingImages = images.filter((image) => {
+            if (filter === 'mine') return image.created_by === currentUserId;
+            if (filter === 'no-caption') return image.captions.length === 0;
+            if (filter === 'unvoted') {
+                return !image.captions.some((caption) => caption.votes.some((vote) => vote.user_id === currentUserId));
+            }
+            return true;
+        });
+
+        if (filter !== 'top') return matchingImages;
+
+        return [...matchingImages].sort((a, b) => {
+            const scoreDifference = postScore(b) - postScore(a);
+            if (scoreDifference !== 0) return scoreDifference;
+            const dateDifference = b.created_at.localeCompare(a.created_at);
+            return dateDifference !== 0 ? dateDifference : b.id.localeCompare(a.id);
+        });
+    }, [currentUserId, filter, images]);
 
     const filters: { value: FeedFilter; label: string }[] = [
         { value: 'all', label: 'All posts' },
+        { value: 'top', label: 'Top rated' },
         { value: 'mine', label: 'My posts' },
         { value: 'unvoted', label: 'Unvoted' },
         { value: 'no-caption', label: 'No caption yet' },

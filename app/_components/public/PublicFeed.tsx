@@ -21,7 +21,6 @@ export function PublicFeed({ posts }: { posts: PublicPost[] }) {
                         <PostPhoto src={post.image_url} priority={index === 0} />
                         <div className="p-3">
                             <p className="text-base font-bold leading-relaxed">{post.caption ?? 'The punchline is still loading in real life.'}</p>
-                            {post.caption !== null && <p className="sahur-tag mt-3">Top rated · {post.score ?? 0} net votes</p>}
                             <Link href="/login" className="sahur-button-ghost mt-4 w-full">Sign in to vote & see more</Link>
                         </div>
                     </article>

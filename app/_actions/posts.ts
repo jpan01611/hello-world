@@ -292,7 +292,7 @@ export async function generateCaptionAction(imageId: string) {
     if (imageError) throw imageError;
     if (!image) throw new Error('You can only generate captions for your own posts');
 
-    const { description, prompt: visionPrompt } = await generateDescription(image.image_url, image.context);
+    const { description, prompt: visionPrompt } = await generateDescription(image.image_url);
     const { caption, prompt: captionPrompt } = await generateFunnyCaption(description, image.context);
 
     const { error: dbError } = await supabase

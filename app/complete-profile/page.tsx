@@ -34,8 +34,11 @@ export default function CompleteProfilePage() {
                 return;
             }
 
-            setFirstName(profile?.first_name ?? '');
-            setLastName(profile?.last_name ?? '');
+            const metadata = user.user_metadata ?? {};
+            const fullName = String(metadata.full_name ?? metadata.name ?? '').trim();
+            const nameParts = fullName.split(/\s+/).filter(Boolean);
+            setFirstName(profile?.first_name ?? String(metadata.given_name ?? nameParts[0] ?? ''));
+            setLastName(profile?.last_name ?? String(metadata.family_name ?? nameParts.slice(1).join(' ')));
             setChecking(false);
         }
 

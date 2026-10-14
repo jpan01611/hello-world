@@ -350,7 +350,14 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
                             : 'Generate Caption'}
                 </button>}
                 {isOwner && showCaptionManagement && (
-                    <button type="button" onClick={handleDelete} disabled={isDeleting} className="sahur-button-ghost w-full">{isDeleting ? 'Deleting…' : 'Delete post'}</button>
+                    <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="w-full rounded-xl border-2 border-red-900 bg-red-50 px-4 py-2 text-sm font-bold text-red-900 shadow-[0_3px_0_#5f1717] transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {isDeleting ? 'Deleting…' : 'Delete post'}
+                    </button>
                 )}
             </div>
         </article>

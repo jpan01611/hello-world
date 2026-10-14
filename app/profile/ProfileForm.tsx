@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { UPLOAD_SIZE_HINT, uploadSizeError } from '@/lib/upload-limits';
+import { deleteAccountAction } from '@/app/_actions/account';
 
 const AVATARS_BUCKET = 'avatars';
 
@@ -28,6 +29,7 @@ export default function ProfileForm() {
     const [loading, setLoading] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
+    const [deletingAccount, setDeletingAccount] = useState(false);
     const [checking, setChecking] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
@@ -142,6 +144,28 @@ export default function ProfileForm() {
         router.refresh();
     }
 
+    async function handleDeleteAccount() {
+        if (deletingAccount || signingOut) return;
+        const confirmed = window.confirm(
+            'Delete your account permanently? Your profile, posts, captions, and votes will be removed and cannot be recovered.'
+        );
+        if (!confirmed) return;
+
+        setDeletingAccount(true);
+        setError(null);
+        const result = await deleteAccountAction();
+
+        if (result.error) {
+            setDeletingAccount(false);
+            setError(result.error);
+            return;
+        }
+
+        await supabase.auth.signOut();
+        router.replace('/login');
+        router.refresh();
+    }
+
     if (checking) {
         return (
             <div className="sahur-page flex flex-1 items-center justify-center px-5 py-12">
@@ -153,10 +177,9 @@ export default function ProfileForm() {
     return (
         <div className="sahur-page flex flex-1 flex-col items-center justify-center px-5 py-12">
             <div className="sahur-panel w-full max-w-lg p-6 sm:p-9">
-                <Link href="/" className="sahur-button-ghost mb-6 inline-flex">
+                <Link href="/" className="sahur-button-ghost mb-6 inline-flex min-h-9 gap-1 px-1.5 py-1 text-xs">
                     ← Back to the lodge
                 </Link>
-                <span className="sahur-eyebrow">Your little corner</span>
                 <h1 className="mb-4 mt-3 text-4xl font-black tracking-tight">
                     Your lodge pass.
                 </h1>
@@ -242,12 +265,26 @@ export default function ProfileForm() {
                     <button
                         type="button"
                         onClick={handleSignOut}
-                        disabled={signingOut}
+                        disabled={signingOut || deletingAccount}
                         className="sahur-button-secondary min-h-12 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {signingOut ? 'Signing out…' : 'Sign out'}
                     </button>
                 </form>
+
+                <div className="mt-8 border-t-2 border-[#68432d] pt-6">
+                    <p className="mb-3 text-sm leading-relaxed">
+                        Permanently remove your account and all of your lodge activity.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={handleDeleteAccount}
+                        disabled={deletingAccount || signingOut}
+                        className="min-h-11 rounded-xl border-2 border-red-900 bg-red-50 px-4 py-2 text-sm font-bold text-red-900 shadow-[0_3px_0_#5f1717] transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {deletingAccount ? 'Deleting account…' : 'Delete account'}
+                    </button>
+                </div>
             </div>
         </div>
     );

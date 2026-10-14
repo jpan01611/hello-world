@@ -60,7 +60,24 @@ post permissions are unchanged by the redesign.
 - **Creator dashboard** — `/dashboard` shows your posts, caption count, vote
   count, and shortcuts to upload and edit your profile.
 - **Protected account page** — `/profile` requires sign-in and includes the
-  account welcome, name editing, avatar upload, and sign-out.
+  account welcome, name editing, avatar upload, sign-out, and permanent account
+  deletion with confirmation. Deleting an account cascades through its profile,
+  posts, captions, and votes.
+
+## Latest account and UI updates
+
+- Google OAuth names are copied into empty profile name fields during the
+  callback. Existing profile names are preserved, and users with complete names
+  can go directly to the home feed.
+- The profile page uses a compact back link and a focused account heading,
+  followed by profile editing, avatar upload, sign-out, and destructive account
+  controls.
+- Post owners can delete their posts from the details page using a clearly
+  styled red destructive button.
+- Account deletion requires confirmation, removes the authenticated
+  `auth.users` row through the protected `delete_current_account` RPC, and
+  relies on foreign-key cascades for the user's profile, posts, captions, and
+  votes.
 
 ---
 
@@ -87,6 +104,7 @@ app/
   globals.css            Tailwind + theme tokens
   _actions/
     posts.ts            Server actions for posts, captions, context, and votes
+    account.ts          Protected server action for permanent account deletion
   _components/posts/
     ImageCard.tsx       Post card/details content, captions, and voting UI
     PostPhoto.tsx       Uncropped photo with a proportion-fitting inner frame
@@ -98,7 +116,7 @@ app/
   auth/callback/route.ts OAuth code→session exchange
   complete-profile/      First/last name onboarding
   profile/page.tsx       Server-side authentication gate
-  profile/ProfileForm.tsx Account welcome, edit name/avatar, sign out
+  profile/ProfileForm.tsx Account editing and destructive account controls
   dashboard/page.tsx      Personal post and activity dashboard
   new/
     page.tsx             New-post page
@@ -115,7 +133,7 @@ lib/
 proxy.ts                 Next.js middleware → refreshes auth session cookies
 next.config.ts           Storage host and 2.2 MB Server Action body limit
 public/demo-photos/      Six local images used by the anonymous demo
-supabase/migrations/     Versioned SQL schema (tables, RLS, functions, indexes)
+supabase/migrations/     Versioned SQL schema, RLS, RPCs, and indexes
 ```
 
 ---
@@ -143,13 +161,27 @@ and `caption_prompt`. Schema lives in
 **Tables:** `profiles` (1:1 with `auth.users`), `images`, `captions` (many per
 image, storing the AI output *and* the prompts used to generate it), `votes`
 (unique per user+caption). `images.selected_caption_id` stores the owner's
-homepage choice. Foreign keys cascade on delete.
+homepage choice. Foreign keys cascade on delete. The `delete_current_account`
+function lets an authenticated user remove their own `auth.users` row, which
+cascades to their database records. Apply `0014_delete_account.sql` before using
+the Delete account control; if the RPC is not immediately visible afterward,
+run `NOTIFY pgrst, 'reload schema';` in the Supabase SQL editor.
 
 **RLS** is enabled on every table with the strictest rules that don't break the
 app: authenticated-only raw-table reads, owner-restricted writes, and one vote
 per user per caption. A narrow public RPC exposes posts with only their
 featured caption and aggregate score, never hidden captions or individual votes.
 Caption inserts additionally require ownership of the associated post.
+
+The account-deletion RPC is intentionally callable only by authenticated users.
+Run `0014_delete_account.sql` in the connected Supabase project before using
+the Delete account button. If PostgREST still reports that the function is
+missing after the migration runs, refresh its schema cache:
+
+```sql
+NOTIFY pgrst, 'reload schema';
+```
+
 Full breakdown and the migration table are in
 [`docs/setup.md`](./docs/setup.md) and
 [`docs/conventions.md`](./docs/conventions.md).

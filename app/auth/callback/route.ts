@@ -13,6 +13,29 @@ export async function GET(request: NextRequest) {
         const supabase = await createClient();
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const metadata = user.user_metadata ?? {};
+                const fullName = String(metadata.full_name ?? metadata.name ?? '').trim();
+                const nameParts = fullName.split(/\s+/).filter(Boolean);
+                const googleFirstName = String(metadata.given_name ?? nameParts[0] ?? '').trim();
+                const googleLastName = String(metadata.family_name ?? nameParts.slice(1).join(' ')).trim();
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('first_name, last_name')
+                    .eq('id', user.id)
+                    .maybeSingle();
+
+                if (profile && (!profile.first_name || !profile.last_name) && googleFirstName && googleLastName) {
+                    await supabase
+                        .from('profiles')
+                        .update({
+                            first_name: profile.first_name || googleFirstName,
+                            last_name: profile.last_name || googleLastName,
+                        })
+                        .eq('id', user.id);
+                }
+            }
             return NextResponse.redirect(`${origin}${next}`);
         }
     }

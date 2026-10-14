@@ -35,7 +35,10 @@ and the creator context are used to generate one meme caption.
    use — e.g. `http://localhost:3000/auth/callback` and your Vercel URL.
 
 Run any migrations not yet applied. If you already ran `0001` through `0009`,
-apply `0010_public_featured_feed.sql` before using the public homepage.
+apply `0010_public_featured_feed.sql` before using the public homepage. Apply
+`0014_delete_account.sql` before using the Delete account control on `/profile`.
+If Supabase reports that `delete_current_account` is missing after running it,
+run `NOTIFY pgrst, 'reload schema';` in the SQL editor and retry.
 
 ### Migration reference
 
@@ -51,6 +54,10 @@ apply `0010_public_featured_feed.sql` before using the public homepage.
 | `0008_caption_prompts.sql` | `vision_prompt` / `caption_prompt` columns |
 | `0009_strict_rls.sql` | Restrict reads to authenticated users |
 | `0010_public_featured_feed.sql` | Public featured-feed RPC; post-owner-only caption insertion |
+| `0011_post_context.sql` | Optional post context |
+| `0012_authenticated_profile_names.sql` | Authenticated profile-name updates |
+| `0013_selected_caption.sql` | Owner-selected homepage caption |
+| `0014_delete_account.sql` | Authenticated self-service account deletion |
 
 ## Running locally
 

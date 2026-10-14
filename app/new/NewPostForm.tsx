@@ -27,6 +27,19 @@ export function NewPostForm() {
     const [isDragging, setIsDragging] = useState(false);
     const dragDepth = useRef(0);
 
+    async function submitUrl(formData: FormData) {
+        setUploadError(null);
+        try {
+            await uploadImageUrlAction(formData);
+        } catch (error) {
+            const digest = error && typeof error === 'object' && 'digest' in error
+                ? String(error.digest)
+                : '';
+            if (digest.startsWith('NEXT_REDIRECT')) throw error;
+            setUploadError(error instanceof Error ? error.message : 'We couldn\'t post that photo URL.');
+        }
+    }
+
     function selectFiles(files: FileList | null) {
         const input = fileInputRef.current;
         if (!input) return;
@@ -168,7 +181,7 @@ export function NewPostForm() {
                     <SubmitButton disabled={!!uploadError || !fileName} />
                 </form>
             ) : (
-                <form action={uploadImageUrlAction} className="flex flex-col gap-4">
+                <form action={submitUrl} className="flex flex-col gap-4">
                     <label className="flex flex-col gap-2 text-sm font-bold">
                         Photo URL
                         <input
@@ -178,6 +191,7 @@ export function NewPostForm() {
                             required
                             className="sahur-input"
                             aria-describedby="photo-url-hint"
+                            onChange={() => setUploadError(null)}
                         />
                     </label>
                     <p id="photo-url-hint" className="text-sm leading-relaxed">
@@ -194,6 +208,7 @@ export function NewPostForm() {
                         />
                         <span className="font-normal text-[#71523c]">Keep it NYC or Columbia-adjacent for the best caption.</span>
                     </label>
+                    {uploadError && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{uploadError}</p>}
                     <SubmitButton />
                 </form>
             )}

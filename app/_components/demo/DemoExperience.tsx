@@ -66,12 +66,16 @@ export function DemoExperience() {
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const demoSlide = Number(params.get('demoSlide'));
-        if (Number.isInteger(demoSlide) && demoSlide >= 1 && demoSlide <= demoPhotos.length) {
-            setCurrentPhotoIndex(demoSlide - 1);
-        }
-        if (params.get('demo') === '1') {
-            setIsOpen(true);
-        }
+        const frame = window.requestAnimationFrame(() => {
+            if (Number.isInteger(demoSlide) && demoSlide >= 1 && demoSlide <= demoPhotos.length) {
+                setCurrentPhotoIndex(demoSlide - 1);
+            }
+            if (params.get('demo') === '1') {
+                setIsOpen(true);
+            }
+        });
+
+        return () => window.cancelAnimationFrame(frame);
     }, []);
 
     useEffect(() => {

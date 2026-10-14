@@ -118,6 +118,8 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
         startDeleteTransition(async () => {
             try {
                 await deleteImageAction(imageId);
+                router.replace('/');
+                router.refresh();
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to delete post');
             }

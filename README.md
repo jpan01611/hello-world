@@ -50,9 +50,10 @@ post permissions are unchanged by the redesign.
   The file flow supports drag-and-drop, preview, changing/removing the selected
   photo, and inline validation. Non-image files, multiple files, and files over
   2 MB are rejected before submission.
-- **AI captions** — Gemini first analyzes the photo and creator context, then
-  generates a meme statement grounded in the photo, context, New York City,
-  and Columbia University. The exact prompts are saved with each caption.
+- **AI captions** — Gemini first performs a photo-only visual analysis. A
+  second text-generation step then combines that analysis with creator context
+  and a natural New York City or Columbia University angle before writing one
+  meme caption. The exact prompts are saved with each caption.
 - **Voting** — up/down vote captions with optimistic UI; votes toggle/flip
   atomically server-side. The top-rated caption is highlighted in place. Voting
   is restricted to logged-in users at both the server-action and database

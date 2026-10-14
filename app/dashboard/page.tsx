@@ -49,7 +49,16 @@ export default async function DashboardPage() {
                             <div className="sahur-panel p-4"><p className="sahur-eyebrow">AI captions</p><p className="mt-2 text-3xl font-black">{captionCount}</p></div>
                             <div className="sahur-panel p-4"><p className="sahur-eyebrow">Community votes</p><p className="mt-2 text-3xl font-black">{voteCount}</p></div>
                         </div>
-                        {posts.length > 0 ? <FeedGrid images={posts} currentUserId={user.id} showNewPost={false} showFilters={false} /> : (
+                        {posts.length > 0 ? (
+                            <FeedGrid
+                                images={posts}
+                                currentUserId={user.id}
+                                showNewPost={false}
+                                showFilters={false}
+                                displayAllCaptions={false}
+                                showCaptionManagement={false}
+                            />
+                        ) : (
                             <div className="sahur-panel text-center">
                                 <h2 className="text-2xl font-black">Your wall is ready.</h2>
                                 <p className="mt-2">Upload a NYC or Columbia moment and give the AI some context.</p>

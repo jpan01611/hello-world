@@ -9,6 +9,18 @@ import { uploadSizeError } from '@/lib/upload-limits';
 const IMAGES_BUCKET = 'images';
 const MAX_CONTEXT_LENGTH = 500;
 
+function photoUrlErrorMessage(error: unknown): string {
+    const message = error instanceof Error ? error.message : '';
+    if (
+        message.includes('Could not download image for AI analysis') ||
+        message.includes('Could not decode image for AI analysis')
+    ) {
+        return 'We couldn’t use that link. Please paste a direct link to a JPG, PNG, GIF, or WebP image.';
+    }
+
+    return 'We couldn’t create a caption from that photo link. Please try another direct image link.';
+}
+
 async function generateCaptionForImage(
     supabase: Awaited<ReturnType<typeof createClient>>,
     imageId: string,
@@ -16,7 +28,7 @@ async function generateCaptionForImage(
     context: string | null,
     userId: string,
 ) {
-    const { description, prompt: visionPrompt } = await generateDescription(imageUrl, context);
+    const { description, prompt: visionPrompt } = await generateDescription(imageUrl);
     const { caption, prompt: captionPrompt } = await generateFunnyCaption(description, context);
     const { error } = await supabase.from('captions').insert({
         image_id: imageId,
@@ -79,10 +91,19 @@ export async function uploadImageAction(formData: FormData) {
         .single();
 
     if (dbError) {
+        await supabase.storage.from(IMAGES_BUCKET).remove([fileName]);
         throw dbError;
     }
 
-    await generateCaptionForImage(supabase, image.id, urlData.publicUrl, typeof context === 'string' ? context.trim() || null : null, user.id);
+    try {
+        await generateCaptionForImage(supabase, image.id, urlData.publicUrl, typeof context === 'string' ? context.trim() || null : null, user.id);
+    } catch (error) {
+        await supabase.from('images').delete().eq('id', image.id).eq('created_by', user.id);
+        await supabase.storage.from(IMAGES_BUCKET).remove([fileName]);
+        throw error instanceof Error
+            ? new Error(`We couldn't create a caption for that photo: ${error.message}`)
+            : new Error('We couldn\'t create a caption for that photo.');
+    }
     redirect('/');
 }
 
@@ -128,7 +149,16 @@ export async function uploadImageUrlAction(formData: FormData) {
         throw dbError;
     }
 
-    await generateCaptionForImage(supabase, image.id, parsed.toString(), typeof context === 'string' ? context.trim() || null : null, user.id);
+    try {
+        await generateCaptionForImage(supabase, image.id, parsed.toString(), typeof context === 'string' ? context.trim() || null : null, user.id);
+    } catch (error) {
+        await supabase
+            .from('images')
+            .delete()
+            .eq('id', image.id)
+            .eq('created_by', user.id);
+        throw new Error(photoUrlErrorMessage(error));
+    }
     redirect('/');
 }
 

@@ -24,7 +24,7 @@ export default async function NewPostPage() {
                         Drop a photo.
                     </h1>
                     <p className="mb-8 text-base leading-relaxed">
-                        A weird find, a perfect reaction, a little everyday chaos. Give it a spot on the wall.
+                        Share a Columbia moment, campus inside joke, or everyday student-life chaos. Give it a spot on the wall.
                     </p>
 
                     <NewPostForm />

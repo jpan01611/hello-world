@@ -293,7 +293,7 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
                             maxLength={500}
                             rows={3}
                             className="sahur-input resize-y"
-                            placeholder="Add NYC or Columbia context for the caption"
+                            placeholder="Add Columbia, campus, or student-life context for the caption"
                         />
                         <div className="flex gap-2">
                             <button type="submit" disabled={isSavingContext} className="sahur-button-secondary">{isSavingContext ? 'Saving…' : 'Save context'}</button>

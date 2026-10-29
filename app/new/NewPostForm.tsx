@@ -167,15 +167,15 @@ export function NewPostForm() {
                         />
                     </div>
                     <label className="flex flex-col gap-2 text-sm font-bold">
-                        Add context for the caption (Optional)
+                        Add Columbia context for the caption (Optional)
                         <textarea
                             name="context"
                             rows={3}
                             maxLength={500}
-                            placeholder="What should the AI know? E.g. Butler Library during midterms, or a rainy walk near Columbia."
+                            placeholder="What should the AI know? E.g. Butler during midterms, a Core class, or a rainy walk near Columbia."
                             className="sahur-input resize-y"
                         />
-                        <span className="font-normal text-[#71523c]">Keep it NYC or Columbia-adjacent for the best caption.</span>
+                        <span className="font-normal text-[#71523c]">Mention your school, campus, neighborhood, or student routine for a more specific caption.</span>
                     </label>
                     {uploadError && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{uploadError}</p>}
                     <SubmitButton disabled={!!uploadError || !fileName} />
@@ -198,15 +198,15 @@ export function NewPostForm() {
                         Paste a direct link to an image, not the page it lives on.
                     </p>
                     <label className="flex flex-col gap-2 text-sm font-bold">
-                        Add context for the caption (Optional)
+                        Add Columbia context for the caption (Optional)
                         <textarea
                             name="context"
                             rows={3}
                             maxLength={500}
-                            placeholder="What should the AI know? E.g. a Columbia study break or a subway adventure."
+                            placeholder="What should the AI know? E.g. a Columbia study break, Core class, or subway adventure."
                             className="sahur-input resize-y"
                         />
-                        <span className="font-normal text-[#71523c]">Keep it NYC or Columbia-adjacent for the best caption.</span>
+                        <span className="font-normal text-[#71523c]">Mention your school, campus, neighborhood, or student routine for a more specific caption.</span>
                     </label>
                     {uploadError && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{uploadError}</p>}
                     <SubmitButton />

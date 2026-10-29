@@ -112,16 +112,16 @@ export default async function Home() {
                 ) : <section className="relative mb-10 overflow-hidden rounded-[2rem] border-2 border-[#302017] bg-[#493024] px-6 py-10 text-[#fff9ec] shadow-[6px_7px_0_#bda487] sm:px-10">
                     <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
                         <div>
-                            <p className="mb-4 text-xs font-bold uppercase tracking-[.2em] text-[#dbf575]">Good photos. Questionable punchlines.</p>
+                            <p className="mb-4 text-xs font-bold uppercase tracking-[.2em] text-[#dbf575]">Columbia photos. Questionable punchlines.</p>
                             <h1 className="max-w-3xl text-4xl font-black leading-[1.05] tracking-tight sm:text-6xl">
                                 Bring the photo.<br />We bring the <span className="text-[#ffae70]">chaos.</span>
                             </h1>
                             <p className="mt-5 max-w-xl text-base leading-relaxed text-[#e4ccb1]">
-                                Dorm lore, subway moments, weekend side quests. Turn your photos into AI punchlines and let the crowd pick the bangers.
+                                Made for Columbia students: turn dorm lore, campus moments, subway commutes, and weekend side quests into AI punchlines. Then let your classmates pick the bangers.
                             </p>
                             <div className="mt-7 flex flex-wrap gap-3">
                                 <Link href={user ? '/new' : '/login'} className="sahur-button">{user ? 'Drop a photo +' : 'Sign up & make a caption'}</Link>
-                                <span className="inline-flex items-center rounded-xl border border-[#a78669] px-4 py-2 text-xs font-semibold">Photo → AI caption → crowd vote</span>
+                                <span className="inline-flex items-center rounded-xl border border-[#a78669] px-4 py-2 text-xs font-semibold">Photo → AI caption → Columbia vote</span>
                             </div>
                         </div>
                         <div className="flex justify-center md:justify-end">

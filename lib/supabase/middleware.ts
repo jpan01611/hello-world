@@ -27,10 +27,28 @@ export async function updateSession(request: NextRequest) {
         }
     );
 
-    // IMPORTANT: Avoid writing logic between createServerClient and
-    // supabase.auth.getUser(). A simple mistake could make it very hard to
-    // debug issues with users being randomly logged out.
-    await supabase.auth.getUser();
+    // IMPORTANT: Avoid writing unrelated logic between createServerClient and
+    // supabase.auth.getUser(). A stale refresh token can otherwise be retried
+    // on every request and prevent the user from reaching the login page.
+    try {
+        await supabase.auth.getUser();
+    } catch (error) {
+        const authError = error as { code?: unknown; status?: unknown };
+        const isInvalidRefreshToken =
+            authError.code === 'refresh_token_not_found' ||
+            (authError.status === 400 && authError.code === 'invalid_refresh_token');
+
+        if (!isInvalidRefreshToken) {
+            throw error;
+        }
+
+        for (const cookie of request.cookies.getAll()) {
+            if (cookie.name.startsWith('sb-')) {
+                request.cookies.delete(cookie.name);
+                supabaseResponse.cookies.delete(cookie.name);
+            }
+        }
+    }
 
     return supabaseResponse;
 }

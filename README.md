@@ -1,8 +1,8 @@
 # funfunfunsahur
 
-A caption-contest web app: upload a photo, add context, let Gemini generate a
-NYC/Columbia-themed meme caption, and vote on the community's captions. Built
-with Next.js 16 and Supabase.
+A caption-contest web app: bring a photo, add optional context, let Gemini
+write a brief NYC/Columbia-themed meme caption, and let the community vote.
+Built with Next.js 16, React, TypeScript, and Supabase.
 
 Originally bootstrapped from `create-next-app` as a course project (see
 [`REQUIREMENTS.md`](./REQUIREMENTS.md) for the HW1→HW4 assignment scope) and
@@ -26,62 +26,46 @@ post permissions are unchanged by the redesign.
 
 - **Google OAuth sign-in** via Supabase Auth (PKCE flow through
   `/auth/callback`).
-- **Profiles** — a profile row is auto-created on first login (via an
-  `auth.users` trigger). First-time users are prompted to complete their first
-  and last name before entering the app. Users can edit their name and upload
-  an avatar from the Profile page.
+- **Profiles** — a profile row is auto-created on first login. Google names
+  populate empty profile fields during OAuth, so complete accounts can go
+  directly to the feed. Users can edit their name and avatar from `/profile`.
 - **Gallery feed (homepage)** — a shared grid of posts with filters for all
-  posts, your posts, unvoted posts, and posts without captions. Each post shows
-  exactly one caption: the owner's selected caption, or the highest-rated
-  caption when no selection has been made.
-- **Home-caption Top rated filter** — both feeds rank posts by the net votes of
-  the caption shown on the home feed: the owner's selected caption, or the
-  highest-rated fallback caption when no selection has been made.
+  posts, Top rated, your posts, unvoted posts, and posts without captions.
+  Every feed card shows exactly one home caption: the owner's selected caption,
+  or the highest-rated fallback caption when no selection has been made.
+- **Home-caption Top rated** — both signed-in and anonymous feeds rank posts by
+  the net votes of the caption currently shown on the home feed, not by all
+  captions combined.
 - **Anonymous demo** — signed-out visitors can open a local six-photo slideshow,
   generate prewritten captions, vote with reversible up/down controls, jump
   between photos with the segmented progress bar, and continue to the
   `/intrigued` sign-up prompt.
 - **Post details** — signed-in users can click any post to open `/posts/[id]`.
-  The details page preserves caption creation order and exposes all generated
-  captions, voting, owner editing, caption generation, deletion, and the
-  checkbox for choosing the caption shown on the homepage.
+  This is the management view: captions remain in creation order, and owners
+  can edit context, generate/delete captions, choose the home caption, and
+  delete the post. Deleting a post returns to the feed.
 - **New posts** — add a photo either by uploading a file (stored in Supabase
   Storage) or by pasting an image URL. A slider switch selects the input mode.
   The file flow supports drag-and-drop, preview, changing/removing the selected
   photo, and inline validation. Non-image files, multiple files, and files over
-  2 MB are rejected before submission.
+  2 MB are rejected before submission. URL posts require a direct image URL;
+  invalid or unreadable links show a friendly inline error and do not leave a
+  blank post behind.
 - **AI captions** — Gemini first performs a photo-only visual analysis. A
-  second text-generation step then combines that analysis with creator context
-  and a natural New York City or Columbia University angle before writing one
-  meme caption. The exact prompts are saved with each caption.
-- **Voting** — up/down vote captions with optimistic UI; votes toggle/flip
-  atomically server-side. The top-rated caption is highlighted in place. Voting
-  is restricted to logged-in users at both the server-action and database
-  (RLS) level.
+  second text-generation step privately combines that analysis with creator
+  context and a natural NYC/Columbia angle, then returns one sentence of no
+  more than 12 words. The exact prompts are saved with each caption.
+- **Voting** — up/down controls update optimistically while the server toggles
+  votes atomically. Voting is restricted to logged-in users at both the
+  server-action and database (RLS) level.
 - **Owner controls** — owners can edit context, generate captions, delete
   captions, choose the homepage caption, and delete posts. Deletes cascade to
   related votes.
 - **Creator dashboard** — `/dashboard` shows your posts, caption count, vote
   count, and shortcuts to upload and edit your profile.
-- **Protected account page** — `/profile` requires sign-in and includes the
-  account welcome, name editing, avatar upload, sign-out, and permanent account
-  deletion with confirmation. Deleting an account cascades through its profile,
-  posts, captions, and votes.
-
-## Latest account and UI updates
-
-- Google OAuth names are copied into empty profile name fields during the
-  callback. Existing profile names are preserved, and users with complete names
-  can go directly to the home feed.
-- The profile page uses a compact back link and a focused account heading,
-  followed by profile editing, avatar upload, sign-out, and destructive account
-  controls.
-- Post owners can delete their posts from the details page using a clearly
-  styled red destructive button.
-- Account deletion requires confirmation, removes the authenticated
-  `auth.users` row through the protected `delete_current_account` RPC, and
-  relies on foreign-key cascades for the user's profile, posts, captions, and
-  votes.
+- **Protected account page** — `/profile` includes name editing, avatar upload,
+  sign-out, and confirmed permanent account deletion. Deleting an account
+  removes its profile, posts, captions, and votes through foreign-key cascades.
 
 ---
 
@@ -107,7 +91,8 @@ app/
   layout.tsx             Root layout, fonts
   globals.css            Tailwind + theme tokens
   _actions/
-    posts.ts            Server actions for posts, captions, context, and votes
+    posts.ts            Server actions for posts, captions, context, votes
+                        and safe upload cleanup
     account.ts          Protected server action for permanent account deletion
   _components/posts/
     ImageCard.tsx       Post card/details content, captions, and voting UI
@@ -120,14 +105,14 @@ app/
   auth/callback/route.ts OAuth code→session exchange
   complete-profile/      First/last name onboarding
   profile/page.tsx       Server-side authentication gate
-  profile/ProfileForm.tsx Account editing and destructive account controls
+  profile/ProfileForm.tsx Account editing, sign-out, and deletion
   dashboard/page.tsx      Personal post and activity dashboard
   new/
     page.tsx             New-post page
     NewPostForm.tsx      Upload-file vs paste-URL form
 
 lib/
-  ai/captions.ts         Two-step Gemini caption pipeline
+  ai/captions.ts         Photo analysis plus brief caption generation
   upload-limits.ts       Shared upload size validation
   supabase/
     client.ts            Browser Supabase client
@@ -148,10 +133,13 @@ supabase/migrations/     Versioned SQL schema, RLS, RPCs, and indexes
   session cookies on matched requests. The homepage allows signed-out browsing;
   protected routes require login and signed-in homepage users complete onboarding.
 - **Posting, captions & voting.** Server actions re-check ownership on top of
-  RLS. Gemini analyzes the image/context, then generates one meme caption.
-  Voting is atomic via `toggle_vote`, with optimistic UI. The homepage renders
-  one featured caption per post; the details page is the management view for
-  the complete caption list.
+  RLS. A post is inserted only for an authenticated owner, then Gemini runs a
+  photo-only analysis followed by a separate caption-generation call. If a
+  remote URL cannot be downloaded or decoded, the inserted post is removed and
+  the form explains how to fix the link. File-upload failures also clean up
+  Storage and database records. Voting is atomic via `toggle_vote`, with
+  optimistic UI. The homepage renders one home caption per post; details is
+  the management view for the full caption list.
 - **Images.** Files go to Supabase Storage; only public URLs are stored in
   Postgres. Upload validation is shared by the client and server at 2 MB, while
   the Server Action request limit is 2.2 MB to allow multipart overhead.
@@ -163,13 +151,19 @@ and `caption_prompt`. Schema lives in
 [`supabase/migrations/`](./supabase/migrations) and is the source of truth.
 
 **Tables:** `profiles` (1:1 with `auth.users`), `images`, `captions` (many per
-image, storing the AI output *and* the prompts used to generate it), `votes`
-(unique per user+caption). `images.selected_caption_id` stores the owner's
-homepage choice. Foreign keys cascade on delete. The `delete_current_account`
-function lets an authenticated user remove their own `auth.users` row, which
-cascades to their database records. Apply `0014_delete_account.sql` before using
-the Delete account control; if the RPC is not immediately visible afterward,
-run `NOTIFY pgrst, 'reload schema';` in the Supabase SQL editor.
+image, storing the AI output and both generation prompts), and `votes` (unique
+per user+caption). `images.selected_caption_id` stores the owner's home-caption
+choice. Foreign keys cascade on delete. The public feed RPC returns one
+featured caption and its score; migrations `0015` and `0016` keep public and
+signed-in Top rated behavior aligned with the caption shown on the home feed.
+
+Apply `0014_delete_account.sql` before using account deletion. The protected
+`delete_current_account` function removes only the currently authenticated
+user. If PostgREST does not see the function after migration, run:
+
+```sql
+NOTIFY pgrst, 'reload schema';
+```
 
 **RLS** is enabled on every table with the strictest rules that don't break the
 app: authenticated-only raw-table reads, owner-restricted writes, and one vote
@@ -186,9 +180,20 @@ missing after the migration runs, refresh its schema cache:
 NOTIFY pgrst, 'reload schema';
 ```
 
-Full breakdown and the migration table are in
+Full setup, migration order, and RLS details are in
 [`docs/setup.md`](./docs/setup.md) and
 [`docs/conventions.md`](./docs/conventions.md).
+
+## Recent change log
+
+- **October 29, 2026:** Narrowed the product audience to Columbia University
+  students, updated page copy and submission guidance, and tuned Gemini prompts
+  toward Columbia campus and student-life context without forcing references
+  unrelated to the photo.
+- **October 29, 2026:** Added explicit handling for animated image formats so
+  Next.js does not attempt to optimize GIF, APNG, or animated WebP assets.
+- **October 29, 2026:** Added stale Supabase refresh-token cleanup so revoked
+  session cookies are cleared and users can return to the login flow.
 
 ## Getting started
 

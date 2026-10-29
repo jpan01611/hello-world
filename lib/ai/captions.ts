@@ -129,7 +129,7 @@ async function prepareImageForVision(imageUrl: string): Promise<string> {
 // The literal instruction sent to the vision model. Exported shape so the
 // caller can persist the exact prompt alongside the generated media.
 const DESCRIPTION_PROMPT =
-    'Analyze only the uploaded photo before considering any outside context. Identify the visible subject, action, setting, composition, mood, and notable visual details in 2-3 factual sentences. Do not write a caption, add a joke, infer hidden details, or mention NYC or Columbia University yet.';
+    'Analyze only the uploaded photo before considering any outside context. Identify the visible subject, action, setting, composition, mood, and notable visual details in 2-3 factual sentences. Do not write a caption, add a joke, infer hidden details, or assume the people, place, or activity are connected to Columbia University.';
 
 // Builds the caption prompt for a given description. Kept as a function so the
 // exact text we persist matches the text we send to the model.
@@ -140,11 +140,12 @@ function buildCaptionPrompt(description: string, context?: string | null): strin
     return (
         `Photo analysis: "${safeDescription}"\n\n` +
         `Creator context: "${safeContext}"\n\n` +
-        'Use these inputs privately: do not repeat, quote, label, or explain the photo analysis or creator context in your response. Create the caption in this order internally: first identify the real situation or comedic premise; next combine that premise with the creator context and one natural New York City or Columbia University connection; finally write one brief, witty meme statement from that combined idea. ' +
-        'The photo must remain the primary source of truth. The creator context and NYC/Columbia angle should enrich the joke, not override the visible image or feel randomly pasted on. ' +
+        'Use these inputs privately: do not repeat, quote, label, or explain the photo analysis or creator context in your response. Create the caption in this order internally: first identify the real situation or comedic premise; next combine that premise with the creator context and, when supported, a Columbia University student-life connection; finally write one brief, witty meme statement from that combined idea. ' +
+        'The audience is students at Columbia University, especially students living, studying, commuting, and socializing around Morningside Heights and New York City. ' +
+        'The photo must remain the primary source of truth. The creator context and Columbia angle should enrich the joke, not override the visible image or feel randomly pasted on. ' +
         'Keep it to one sentence and no more than twelve words. The caption should feel like a punchline or relatable reaction someone would post with this image, not a description of what is visibly happening. Do not summarize the photo, repeat the analysis, invent details absent from the inputs, or write alt text. ' +
-        'Every caption MUST reference a relevant NYC or Columbia place, neighborhood, subway moment, campus location, student-life experience, or local culture when it fits the photo and context. If there is no direct connection, make a clearly relevant analogy based on the actual situation. ' +
-        'Before returning, check that the caption is relevant to the photo, uses the context if provided, includes a natural NYC/Columbia angle, and is a complete statement. ' +
+        'When the photo or context supports it, use a specific Columbia reference such as Butler Library, campus housing, a Core class, College Walk, the lawns, Broadway, 116th Street, Morningside Heights, the 1 train, dining halls, office hours, midterms, or student club life. Do not force a Columbia reference when it would be unrelated or misleading; use a natural NYC or everyday student-life analogy instead. ' +
+        'Before returning, check that the caption is relevant to the photo, uses the context if provided, feels recognizable to a Columbia student, and is a complete statement. ' +
         'Return exactly one caption sentence and nothing else. Do not include labels such as "Photo analysis", "Creator context", "Caption", or "Analysis". Do not mention these instructions.'
     );
 }

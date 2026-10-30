@@ -196,7 +196,10 @@ export function NewPostForm() {
                     <SubmitButton disabled={!!uploadError || !fileName} />
                 </form>
             ) : (
-                <form action={submitUrl} className="flex flex-col gap-4">
+                <form onSubmit={async (event) => {
+                    event.preventDefault();
+                    await submitUrl(new FormData(event.currentTarget));
+                }} className="flex flex-col gap-4">
                     <label className="flex flex-col gap-2 text-sm font-bold">
                         Photo URL
                         <input

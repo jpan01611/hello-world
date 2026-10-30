@@ -284,7 +284,10 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
             <div className="flex flex-col gap-4 p-3">
                 <p className="sahur-eyebrow">{isOwner ? 'Your photo. Your chaos.' : 'AI wrote it. You judge it.'}</p>
                 {isOwner && isEditingContext ? (
-                    <form action={handleContextSubmit} className="flex flex-col gap-2 rounded-xl bg-[#eadcc4] p-3">
+                    <form onSubmit={(event) => {
+                        event.preventDefault();
+                        handleContextSubmit(new FormData(event.currentTarget));
+                    }} className="flex flex-col gap-2 rounded-xl bg-[#eadcc4] p-3">
                         <label className="text-sm font-bold" htmlFor={`context-${imageId}`}>Post context</label>
                         <textarea
                             id={`context-${imageId}`}

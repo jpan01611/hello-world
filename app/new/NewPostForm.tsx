@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { uploadImageAction, uploadImageUrlAction } from '@/app/_actions/posts';
 import { UPLOAD_SIZE_HINT, uploadSizeError } from '@/lib/upload-limits';
 
@@ -19,6 +20,7 @@ function SubmitButton({ disabled = false }: { disabled?: boolean }) {
 // Lets the user choose between uploading a photo file or pasting an image
 // URL, and submits to the matching server action.
 export function NewPostForm() {
+    const router = useRouter();
     const [mode, setMode] = useState<Mode>('file');
     const [fileName, setFileName] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -30,13 +32,14 @@ export function NewPostForm() {
     async function submitUrl(formData: FormData) {
         setUploadError(null);
         try {
-            await uploadImageUrlAction(formData);
+            const result = await uploadImageUrlAction(formData);
+            if (result?.error) setUploadError(result.error);
         } catch (error) {
             const digest = error && typeof error === 'object' && 'digest' in error
                 ? String(error.digest)
                 : '';
             if (digest.startsWith('NEXT_REDIRECT')) {
-                window.location.assign('/');
+                router.push('/');
                 return;
             }
             setUploadError(error instanceof Error ? error.message : 'We couldn\'t post that photo URL.');
@@ -46,13 +49,14 @@ export function NewPostForm() {
     async function submitFile(formData: FormData) {
         setUploadError(null);
         try {
-            await uploadImageAction(formData);
+            const result = await uploadImageAction(formData);
+            if (result?.error) setUploadError(result.error);
         } catch (error) {
             const digest = error && typeof error === 'object' && 'digest' in error
                 ? String(error.digest)
                 : '';
             if (digest.startsWith('NEXT_REDIRECT')) {
-                window.location.assign('/');
+                router.push('/');
                 return;
             }
             setUploadError(error instanceof Error ? error.message : 'We couldn\'t post that photo.');

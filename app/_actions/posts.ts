@@ -111,9 +111,11 @@ export async function uploadImageAction(formData: FormData) {
     } catch (error) {
         await supabase.from('images').delete().eq('id', image.id).eq('created_by', user.id);
         await supabase.storage.from(IMAGES_BUCKET).remove([fileName]);
-        throw error instanceof Error
-            ? new Error(`We couldn't create a caption for that photo: ${error.message}`)
-            : new Error('We couldn\'t create a caption for that photo.');
+        return {
+            error: error instanceof Error
+                ? `We couldn't create a caption for that photo: ${error.message}`
+                : 'We couldn\'t create a caption for that photo.',
+        };
     }
     redirect('/');
 }
@@ -168,7 +170,7 @@ export async function uploadImageUrlAction(formData: FormData) {
             .delete()
             .eq('id', image.id)
             .eq('created_by', user.id);
-        throw new Error(photoUrlErrorMessage(error));
+        return { error: photoUrlErrorMessage(error) };
     }
     redirect('/');
 }

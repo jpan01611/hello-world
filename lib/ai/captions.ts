@@ -20,9 +20,14 @@ type LlmModelRow = {
     provider: {
         name: string;
         base_url: string;
-        secret_env_var: string;
+        secret_env_var: string | null;
         active: boolean;
-    }[] | null;
+    }[] | {
+        name: string;
+        base_url: string;
+        secret_env_var: string | null;
+        active: boolean;
+    } | null;
 };
 
 const clients = new Map<string, OpenAI>();
@@ -71,26 +76,28 @@ async function getActiveProviderConfig(modelId?: string | null): Promise<Provide
         throw new Error('No active LLM model is configured. Ask an administrator to activate a provider and model.');
     }
 
-    const model = models.find((candidate) => (
+    const model = models.find((candidate) => {
+        const provider = Array.isArray(candidate.provider) ? candidate.provider[0] : candidate.provider;
+        return (
         candidate.active &&
         candidate.model_key.trim() &&
-        candidate.provider?.[0]?.active &&
-        candidate.provider[0].name.trim() &&
-        candidate.provider[0].base_url.trim() &&
-        candidate.provider[0].secret_env_var.trim()
-    ));
+        provider?.active &&
+        provider.name.trim() &&
+        provider.base_url.trim()
+        );
+    });
 
     if (!model) {
         throw new Error('No active LLM model has an active provider. Ask an administrator to activate a provider.');
     }
 
-    const provider = model.provider?.[0];
+    const provider = Array.isArray(model.provider) ? model.provider[0] : model.provider;
     if (!provider) {
         throw new Error('No active LLM provider is configured. Ask an administrator to activate a provider.');
     }
     return {
         name: provider.name,
-        keyEnv: provider.secret_env_var,
+        keyEnv: provider.secret_env_var?.trim() || `${provider.name.replace(/[^a-z0-9]+/gi, '_').toUpperCase()}_API_KEY`,
         baseURL: provider.base_url,
         modelKey: model.model_key,
         modelId: model.id,

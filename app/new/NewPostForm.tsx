@@ -40,6 +40,19 @@ export function NewPostForm() {
         }
     }
 
+    async function submitFile(formData: FormData) {
+        setUploadError(null);
+        try {
+            await uploadImageAction(formData);
+        } catch (error) {
+            const digest = error && typeof error === 'object' && 'digest' in error
+                ? String(error.digest)
+                : '';
+            if (digest.startsWith('NEXT_REDIRECT')) throw error;
+            setUploadError(error instanceof Error ? error.message : 'We couldn\'t post that photo.');
+        }
+    }
+
     function selectFiles(files: FileList | null) {
         const input = fileInputRef.current;
         if (!input) return;
@@ -91,7 +104,7 @@ export function NewPostForm() {
             </div>
 
             {mode === 'file' ? (
-                <form action={uploadImageAction} onSubmit={(e) => {
+                <form action={submitFile} onSubmit={(e) => {
                     const file = fileInputRef.current?.files?.[0];
                     const error = file ? uploadSizeError(file) : null;
                     if (error || uploadError) {

@@ -118,8 +118,8 @@ export function NewPostForm() {
                     e.preventDefault();
                     const file = fileInputRef.current?.files?.[0];
                     const error = file ? uploadSizeError(file) : null;
-                    if (error || uploadError) {
-                        setUploadError(error ?? uploadError);
+                    if (error) {
+                        setUploadError(error);
                         return;
                     }
                     await submitFile(new FormData(e.currentTarget));
@@ -203,7 +203,7 @@ export function NewPostForm() {
                         <span className="font-normal text-[#71523c]">Mention your school, campus, neighborhood, or student routine for a more specific caption.</span>
                     </label>
                     {uploadError && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{uploadError}</p>}
-                    <SubmitButton disabled={!!uploadError || !fileName} />
+                    <SubmitButton disabled={!fileName} />
                 </form>
             ) : (
                 <form onSubmit={async (event) => {

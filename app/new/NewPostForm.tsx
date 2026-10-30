@@ -35,7 +35,10 @@ export function NewPostForm() {
             const digest = error && typeof error === 'object' && 'digest' in error
                 ? String(error.digest)
                 : '';
-            if (digest.startsWith('NEXT_REDIRECT')) throw error;
+            if (digest.startsWith('NEXT_REDIRECT')) {
+                window.location.assign('/');
+                return;
+            }
             setUploadError(error instanceof Error ? error.message : 'We couldn\'t post that photo URL.');
         }
     }
@@ -48,7 +51,10 @@ export function NewPostForm() {
             const digest = error && typeof error === 'object' && 'digest' in error
                 ? String(error.digest)
                 : '';
-            if (digest.startsWith('NEXT_REDIRECT')) throw error;
+            if (digest.startsWith('NEXT_REDIRECT')) {
+                window.location.assign('/');
+                return;
+            }
             setUploadError(error instanceof Error ? error.message : 'We couldn\'t post that photo.');
         }
     }

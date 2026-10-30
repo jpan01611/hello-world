@@ -11,6 +11,7 @@ type ProviderConfig = {
     baseURL: string;
     modelKey: string;
     modelId: string;
+    apiKey: string;
 };
 
 type LlmModelRow = {
@@ -41,7 +42,7 @@ function getClient(providerConfig: ProviderConfig, apiKey: string): OpenAI {
     return client;
 }
 
-async function getActiveProviderConfig(modelId?: string | null): Promise<ProviderConfig> {
+async function getProviderConfigs(modelId?: string | null): Promise<ProviderConfig[]> {
     const supabase = await createClient();
     let query = supabase
         .from('llm_models')
@@ -59,9 +60,7 @@ async function getActiveProviderConfig(modelId?: string | null): Promise<Provide
     }
 
     const models = (data as LlmModelRow[] | null) ?? [];
-    if (models.length === 0) {
-        throw new Error('No active LLM model is configured. Ask an administrator to activate a provider and model.');
-    }
+    if (models.length === 0) throw new Error('No active LLM model is configured. Ask an administrator to activate a provider and model.');
 
     const providerIds = [...new Set(models.map((model) => model.provider_id).filter(Boolean))] as string[];
     const { data: providerRows, error: providerError } = providerIds.length
@@ -69,30 +68,31 @@ async function getActiveProviderConfig(modelId?: string | null): Promise<Provide
         : { data: [] as LlmProviderRow[], error: null };
     if (providerError) throw new Error(`LLM provider configuration could not be loaded: ${providerError.message}`);
     const providers = new Map((providerRows ?? []).map((provider) => [provider.id, provider]));
-    const model = models.find((candidate) => {
+    const configurations = models.flatMap((candidate) => {
         const provider = candidate.provider_id ? providers.get(candidate.provider_id) : null;
-        return candidate.model_key.trim() && provider?.active && provider.name.trim();
-    });
-
-    if (!model) {
-        throw new Error('No active LLM model has an active provider. Ask an administrator to activate a provider.');
-    }
-
-    const provider = model.provider_id ? providers.get(model.provider_id) : null;
-    if (!provider) {
-        throw new Error('No active LLM provider is configured. Ask an administrator to activate a provider.');
-    }
-    return {
-        name: provider.name,
-        keyEnv: provider.secret_env_var?.trim() || `${provider.name.replace(/[^a-z0-9]+/gi, '_').toUpperCase()}_API_KEY`,
-        baseURL: provider.base_url?.trim() || (
+        if (!candidate.model_key.trim() || !provider?.active || !provider.name.trim()) return [];
+        const baseURL = provider.base_url?.trim() || (
             provider.name.toLowerCase().includes('openai')
                 ? 'https://api.openai.com/v1'
                 : ''
-        ),
-        modelKey: model.model_key,
-        modelId: model.id,
-    };
+        );
+        if (!baseURL) return [];
+        const keyEnv = provider.secret_env_var?.trim() || `${provider.name.replace(/[^a-z0-9]+/gi, '_').toUpperCase()}_API_KEY`;
+        const apiKey = process.env[keyEnv]?.trim();
+        return apiKey ? [{
+            name: provider.name,
+            keyEnv,
+            baseURL,
+            modelKey: candidate.model_key,
+            modelId: candidate.id,
+            apiKey,
+        }] : [];
+    });
+
+    if (!configurations.length) throw new Error(modelId
+        ? 'The selected generation-step model is unavailable or missing its server key.'
+        : 'No active LLM model with a configured server key is available. Check the admin LLM settings and Vercel environment variables.');
+    return configurations;
 }
 
 type GenerationStep = {
@@ -238,34 +238,29 @@ async function chatWithProviders(
     stepKey: 'vision_analysis' | 'caption_generation',
 ): Promise<string> {
     const step = await getGenerationStep(stepKey);
-    const provider = await getActiveProviderConfig(step.model_id);
-    const apiKey = process.env[provider.keyEnv]?.trim();
-    if (!apiKey) {
-        throw new Error(
-            `The ${provider.name} API key is not configured. Set ${provider.keyEnv} in the server environment.`,
-        );
+    const providers = await getProviderConfigs(step.model_id);
+    const failures: string[] = [];
+    for (const provider of providers) {
+        try {
+            const request = {
+                model: provider.modelKey,
+                max_tokens: step.max_tokens,
+                ...(step.temperature !== null ? { temperature: step.temperature } : {}),
+                messages,
+                ...(step.thinking_budget !== null && provider.name.toLowerCase().includes('gemini')
+                    ? { extra_body: { google: { thinking_config: { thinking_budget: step.thinking_budget } } } }
+                    : {}),
+            };
+            const result = await getClient(provider, provider.apiKey).chat.completions.create(request);
+            const completion = extractCompletion(result);
+            if (!completion.content) throw new Error(`${provider.name} returned no usable content${completion.error ? `: ${completion.error}` : ''}`);
+            if (completion.finishReason === 'length') console.warn(`${provider.name} returned a length-limited ${stage} response`);
+            return completion.content;
+        } catch (error) {
+            failures.push(`${provider.name}: ${error instanceof Error ? error.message : 'request failed'}`);
+        }
     }
-
-    const request = {
-        model: provider.modelKey,
-        max_tokens: step.max_tokens,
-        ...(step.temperature !== null ? { temperature: step.temperature } : {}),
-        messages,
-        ...(step.thinking_budget !== null && provider.name.toLowerCase().includes('gemini')
-            ? { extra_body: { google: { thinking_config: { thinking_budget: step.thinking_budget } } } }
-            : {}),
-    };
-    const result = await getClient(provider, apiKey).chat.completions.create(request);
-    const completion = extractCompletion(result);
-    if (!completion.content) {
-        throw new Error(
-            `${provider.name} returned no usable content${completion.error ? `: ${completion.error}` : ''}`,
-        );
-    }
-    if (completion.finishReason === 'length') {
-        console.warn(`${provider.name} returned a length-limited ${stage} response`);
-    }
-    return completion.content;
+    throw new Error(`All active LLM providers failed. ${failures.join(' | ')}`);
 }
 
 // Step 1: ask the vision model for a photo-only factual analysis. The

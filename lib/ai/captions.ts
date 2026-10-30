@@ -15,19 +15,17 @@ type ProviderConfig = {
 
 type LlmModelRow = {
     id: string;
+    provider_id: string | null;
     model_key: string;
     active: boolean;
-    provider: {
-        name: string;
-        base_url: string;
-        secret_env_var: string | null;
-        active: boolean;
-    }[] | {
-        name: string;
-        base_url: string;
-        secret_env_var: string | null;
-        active: boolean;
-    } | null;
+};
+
+type LlmProviderRow = {
+    id: string;
+    name: string;
+    base_url: string | null;
+    secret_env_var: string | null;
+    active: boolean;
 };
 
 const clients = new Map<string, OpenAI>();
@@ -47,18 +45,7 @@ async function getActiveProviderConfig(modelId?: string | null): Promise<Provide
     const supabase = await createClient();
     let query = supabase
         .from('llm_models')
-        .select(`
-            id,
-            name,
-            model_key,
-            active,
-            provider:llm_providers (
-                name,
-                base_url,
-                secret_env_var,
-                active
-            )
-        `)
+        .select('id, provider_id, model_key, active')
         .eq('active', true)
         .order('created_at', { ascending: false });
 
@@ -76,21 +63,22 @@ async function getActiveProviderConfig(modelId?: string | null): Promise<Provide
         throw new Error('No active LLM model is configured. Ask an administrator to activate a provider and model.');
     }
 
+    const providerIds = [...new Set(models.map((model) => model.provider_id).filter(Boolean))] as string[];
+    const { data: providerRows, error: providerError } = providerIds.length
+        ? await supabase.from('llm_providers').select('id, name, base_url, secret_env_var, active').in('id', providerIds)
+        : { data: [] as LlmProviderRow[], error: null };
+    if (providerError) throw new Error(`LLM provider configuration could not be loaded: ${providerError.message}`);
+    const providers = new Map((providerRows ?? []).map((provider) => [provider.id, provider]));
     const model = models.find((candidate) => {
-        const provider = Array.isArray(candidate.provider) ? candidate.provider[0] : candidate.provider;
-        return (
-        candidate.active &&
-        candidate.model_key.trim() &&
-        provider?.active &&
-        provider.name.trim()
-        );
+        const provider = candidate.provider_id ? providers.get(candidate.provider_id) : null;
+        return candidate.model_key.trim() && provider?.active && provider.name.trim();
     });
 
     if (!model) {
         throw new Error('No active LLM model has an active provider. Ask an administrator to activate a provider.');
     }
 
-    const provider = Array.isArray(model.provider) ? model.provider[0] : model.provider;
+    const provider = model.provider_id ? providers.get(model.provider_id) : null;
     if (!provider) {
         throw new Error('No active LLM provider is configured. Ask an administrator to activate a provider.');
     }

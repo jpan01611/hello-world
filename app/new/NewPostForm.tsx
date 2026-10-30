@@ -104,13 +104,15 @@ export function NewPostForm() {
             </div>
 
             {mode === 'file' ? (
-                <form action={submitFile} onSubmit={(e) => {
+                <form onSubmit={async (e) => {
+                    e.preventDefault();
                     const file = fileInputRef.current?.files?.[0];
                     const error = file ? uploadSizeError(file) : null;
                     if (error || uploadError) {
-                        e.preventDefault();
                         setUploadError(error ?? uploadError);
+                        return;
                     }
+                    await submitFile(new FormData(e.currentTarget));
                 }} className="flex flex-col gap-4">
                     <div
                         onDragEnter={(e) => {

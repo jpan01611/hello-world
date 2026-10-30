@@ -11,14 +11,16 @@ Create a `.env.local` in the project root:
 NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 
-# AI providers (server-only; no NEXT_PUBLIC_ prefix)
+# AI provider keys (server-only; no NEXT_PUBLIC_ prefix)
+# Add the variables named by llm_providers.secret_env_var.
 GEMINI_API_KEY=<gemini-key>
 ```
 
 The two Supabase values come from your project's **API settings**. AI keys are
-server-only. Gemini is used for both stages through its OpenAI-compatible
-`gemini-2.5-flash` endpoint. The image is analyzed first, then that analysis
-and the creator context are used to generate one meme caption.
+server-only. Caption generation reads the newest active model whose provider is
+also active from `llm_models` and `llm_providers`, then resolves the key using
+the provider's `secret_env_var`. The image is analyzed first, then that
+analysis and the creator context are used to generate one meme caption.
 
 ## Supabase setup
 
@@ -34,7 +36,9 @@ and the creator context are used to generate one meme caption.
 5. Set the auth redirect URL to `<origin>/auth/callback` for every origin you
    use — e.g. `http://localhost:3000/auth/callback` and your Vercel URL.
 
-Run any migrations not yet applied. If you already ran `0001` through `0009`,
+Run any migrations not yet applied, including the admin LLM configuration and
+caption-operation migrations `0022`, `0024`, `0026`, and `0027` from the admin
+project before using dynamic provider/model selection. If you already ran `0001` through `0009`,
 apply `0010_public_featured_feed.sql` before using the public homepage. Apply
 `0014_delete_account.sql` before using the Delete account control on `/profile`.
 If Supabase reports that `delete_current_account` is missing after running it,

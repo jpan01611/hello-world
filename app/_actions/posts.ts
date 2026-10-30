@@ -18,6 +18,17 @@ function photoUrlErrorMessage(error: unknown): string {
         return 'We couldn’t use that link. Please paste a direct link to a JPG, PNG, GIF, or WebP image.';
     }
 
+    if (
+        message.includes('API key') ||
+        message.includes('returned no usable content') ||
+        message.includes('returned no completion') ||
+        message.includes('429') ||
+        message.includes('credits') ||
+        message.includes('configuration')
+    ) {
+        return `We couldn’t generate a caption: ${message}`;
+    }
+
     return 'We couldn’t create a caption from that photo link. Please try another direct image link.';
 }
 

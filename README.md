@@ -51,10 +51,12 @@ post permissions are unchanged by the redesign.
   2 MB are rejected before submission. URL posts require a direct image URL;
   invalid or unreadable links show a friendly inline error and do not leave a
   blank post behind.
-- **AI captions** — Gemini first performs a photo-only visual analysis. A
-  second text-generation step privately combines that analysis with creator
-  context and a natural NYC/Columbia angle, then returns one sentence of no
-  more than 12 words. The exact prompts are saved with each caption.
+- **AI captions** — The server loads active providers, models, and the
+  `vision_analysis`/`caption_generation` settings from shared Supabase
+  configuration managed by the admin app. It honors editable prompts, limits,
+  temperature, thinking budget, and per-step model overrides, then falls back
+  through eligible active providers. The exact rendered prompts are saved with
+  each caption. Provider keys remain server-only environment variables.
 - **Voting** — up/down controls update optimistically while the server toggles
   votes atomically. Voting is restricted to logged-in users at both the
   server-action and database (RLS) level.
@@ -78,7 +80,7 @@ post permissions are unchanged by the redesign.
 | Styling   | Tailwind CSS v4 (via `@tailwindcss/postcss`) |
 | Backend   | Supabase (Postgres, Auth, Storage) |
 | Auth glue | `@supabase/ssr`, `@supabase/supabase-js` |
-| AI        | Gemini via the OpenAI-compatible `openai` SDK |
+| AI        | Active Supabase-configured providers via the OpenAI-compatible `openai` SDK |
 | Hosting   | Vercel |
 
 ---
@@ -133,13 +135,13 @@ supabase/migrations/     Versioned SQL schema, RLS, RPCs, and indexes
   session cookies on matched requests. The homepage allows signed-out browsing;
   protected routes require login and signed-in homepage users complete onboarding.
 - **Posting, captions & voting.** Server actions re-check ownership on top of
-  RLS. A post is inserted only for an authenticated owner, then Gemini runs a
-  photo-only analysis followed by a separate caption-generation call. If a
-  remote URL cannot be downloaded or decoded, the inserted post is removed and
-  the form explains how to fix the link. File-upload failures also clean up
-  Storage and database records. Voting is atomic via `toggle_vote`, with
-  optimistic UI. The homepage renders one home caption per post; details is
-  the management view for the full caption list.
+  RLS. A post is inserted only for an authenticated owner, then the configured
+  vision and caption steps run server-side. If a provider or configuration
+  fails, the post is cleaned up and the actionable error remains visible so
+  the user can retry. Remote image failures receive the same cleanup treatment.
+  Voting is atomic via `toggle_vote`, with optimistic UI. The homepage renders
+  one home caption per post; details is the management view for the full
+  caption list.
 - **Images.** Files go to Supabase Storage; only public URLs are stored in
   Postgres. Upload validation is shared by the client and server at 2 MB, while
   the Server Action request limit is 2.2 MB to allow multipart overhead.
@@ -180,7 +182,9 @@ missing after the migration runs, refresh its schema cache:
 NOTIFY pgrst, 'reload schema';
 ```
 
-Full setup, migration order, and RLS details are in
+The admin app manages the shared LLM catalog and generation-step configuration.
+Apply migrations `0022`, `0024`, `0026`, `0027`, and `0028` from the admin
+project before using dynamic generation. Full setup, migration order, and RLS details are in
 [`docs/setup.md`](./docs/setup.md) and
 [`docs/conventions.md`](./docs/conventions.md).
 
@@ -202,6 +206,7 @@ npm install
 npm run dev     # http://localhost:3000
 ```
 
-You'll need a `.env.local` (Supabase + AI keys) and a configured Supabase
-project. The complete checklist — env vars, bucket creation, migrations, Google
-OAuth, scripts, and Vercel deployment — is in [`docs/setup.md`](./docs/setup.md).
+You'll need a `.env.local` containing Supabase variables and the server-side
+keys for any providers enabled in the shared admin configuration. The complete
+checklist — env vars, bucket creation, migrations, Google OAuth, scripts, and
+Vercel deployment — is in [`docs/setup.md`](./docs/setup.md).

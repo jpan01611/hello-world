@@ -82,8 +82,7 @@ async function getActiveProviderConfig(modelId?: string | null): Promise<Provide
         candidate.active &&
         candidate.model_key.trim() &&
         provider?.active &&
-        provider.name.trim() &&
-        provider.base_url.trim()
+        provider.name.trim()
         );
     });
 
@@ -98,7 +97,11 @@ async function getActiveProviderConfig(modelId?: string | null): Promise<Provide
     return {
         name: provider.name,
         keyEnv: provider.secret_env_var?.trim() || `${provider.name.replace(/[^a-z0-9]+/gi, '_').toUpperCase()}_API_KEY`,
-        baseURL: provider.base_url,
+        baseURL: provider.base_url?.trim() || (
+            provider.name.toLowerCase().includes('openai')
+                ? 'https://api.openai.com/v1'
+                : ''
+        ),
         modelKey: model.model_key,
         modelId: model.id,
     };

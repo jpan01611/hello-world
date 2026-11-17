@@ -31,7 +31,12 @@ export default async function PostPage({ params }: PostPageProps) {
     return (
         <div className="sahur-page">
             <div className="w-full max-w-2xl">
-                <Link href="/" className="sahur-button-ghost mb-5 inline-flex">← Back to the lodge</Link>
+                <nav aria-label="Frontend navigation" className="mb-5 flex flex-wrap items-center gap-2">
+                    <Link href="/" className="sahur-button-ghost">Home</Link>
+                    <Link href="/dashboard" className="sahur-button-secondary">Dashboard</Link>
+                    <Link href="/profile" className="sahur-button-secondary">My profile</Link>
+                    <Link href="/new" className="sahur-button-secondary">New post</Link>
+                </nav>
                 <p className="sahur-eyebrow">Post details</p>
                 <h1 className="mt-1 mb-5 text-3xl font-black tracking-tight">The full caption board</h1>
                 <ImageCard

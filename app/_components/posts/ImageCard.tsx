@@ -1,6 +1,7 @@
 'use client';
 
 import { PostPhoto } from './PostPhoto';
+import { SharePostButton } from './SharePostButton';
 import { useOptimistic, useState, useTransition, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteCaptionAction, deleteImageAction, generateCaptionAction, selectFeaturedCaptionAction, updateImageContextAction, voteOnCaptionAction } from '@/app/_actions/posts';
@@ -312,6 +313,10 @@ export function ImageCard({ imageId, imageUrl, authorName, captions, currentUser
                     </div>
                 )}
                 {error && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{error}</p>}
+
+                <div className="flex justify-end">
+                    <SharePostButton imageId={imageId} />
+                </div>
 
                 {optimisticCaptions.length > 0 && (
                     <ul className="flex flex-col gap-2">

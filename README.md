@@ -183,7 +183,7 @@ NOTIFY pgrst, 'reload schema';
 ```
 
 The admin app manages the shared LLM catalog and generation-step configuration.
-Apply migrations `0022`, `0024`, `0026`, `0027`, and `0028` from the admin
+Apply migrations `0022`, `0024`, `0026`, `0027`, `0028`, `0029`, and `0030` from the admin
 project before using dynamic generation. Full setup, migration order, and RLS details are in
 [`docs/setup.md`](./docs/setup.md) and
 [`docs/conventions.md`](./docs/conventions.md).

@@ -37,8 +37,8 @@ analysis and the creator context are used to generate one meme caption.
    use — e.g. `http://localhost:3000/auth/callback` and your Vercel URL.
 
 Run any migrations not yet applied, including the admin LLM configuration and
-caption-operation migrations `0022`, `0024`, `0026`, and `0027` from the admin
-project before using dynamic provider/model selection. If you already ran `0001` through `0009`,
+caption-operation migrations `0022`, `0024`, `0026`, `0027`, `0028`, `0029`, and `0030`
+from the admin project before using dynamic provider/model selection. If you already ran `0001` through `0009`,
 apply `0010_public_featured_feed.sql` before using the public homepage. Apply
 `0014_delete_account.sql` before using the Delete account control on `/profile`.
 If Supabase reports that `delete_current_account` is missing after running it,

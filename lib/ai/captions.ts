@@ -35,7 +35,12 @@ function getClient(providerConfig: ProviderConfig, apiKey: string): OpenAI {
     const clientKey = `${providerConfig.name}:${providerConfig.baseURL}`;
     let client = clients.get(clientKey);
     if (!client) {
-        client = new OpenAI({ apiKey, baseURL: providerConfig.baseURL });
+        client = new OpenAI({
+            apiKey,
+            baseURL: providerConfig.baseURL,
+            maxRetries: 0,
+            timeout: 45_000,
+        });
         clients.set(clientKey, client);
     }
 

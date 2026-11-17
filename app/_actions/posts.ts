@@ -8,6 +8,24 @@ import { uploadSizeError } from '@/lib/upload-limits';
 
 const IMAGES_BUCKET = 'images';
 const MAX_CONTEXT_LENGTH = 500;
+const CAPTION_PIPELINE_TIMEOUT_MS = 90_000;
+
+async function withCaptionPipelineTimeout<T>(operation: Promise<T>): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+        return await Promise.race([
+            operation,
+            new Promise<T>((_, reject) => {
+                timer = setTimeout(
+                    () => reject(new Error('Caption generation timed out after 90 seconds. Please try again.')),
+                    CAPTION_PIPELINE_TIMEOUT_MS,
+                );
+            }),
+        ]);
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+}
 
 function photoUrlErrorMessage(error: unknown): string {
     const message = error instanceof Error ? error.message : '';
@@ -107,7 +125,13 @@ export async function uploadImageAction(formData: FormData) {
     }
 
     try {
-        await generateCaptionForImage(supabase, image.id, urlData.publicUrl, typeof context === 'string' ? context.trim() || null : null, user.id);
+        await withCaptionPipelineTimeout(generateCaptionForImage(
+            supabase,
+            image.id,
+            urlData.publicUrl,
+            typeof context === 'string' ? context.trim() || null : null,
+            user.id,
+        ));
     } catch (error) {
         await supabase.from('images').delete().eq('id', image.id).eq('created_by', user.id);
         await supabase.storage.from(IMAGES_BUCKET).remove([fileName]);
@@ -163,7 +187,13 @@ export async function uploadImageUrlAction(formData: FormData) {
     }
 
     try {
-        await generateCaptionForImage(supabase, image.id, parsed.toString(), typeof context === 'string' ? context.trim() || null : null, user.id);
+        await withCaptionPipelineTimeout(generateCaptionForImage(
+            supabase,
+            image.id,
+            parsed.toString(),
+            typeof context === 'string' ? context.trim() || null : null,
+            user.id,
+        ));
     } catch (error) {
         await supabase
             .from('images')

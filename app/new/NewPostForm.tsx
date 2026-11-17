@@ -1,15 +1,13 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { uploadImageAction, uploadImageUrlAction } from '@/app/_actions/posts';
 import { UPLOAD_SIZE_HINT, uploadSizeError } from '@/lib/upload-limits';
 
 type Mode = 'file' | 'url';
 
-function SubmitButton({ disabled = false }: { disabled?: boolean }) {
-    const { pending } = useFormStatus();
+function SubmitButton({ disabled = false, pending = false }: { disabled?: boolean; pending?: boolean }) {
     return (
         <button type="submit" disabled={disabled || pending} className="sahur-button min-h-12">
             {pending ? 'Writing caption…' : 'Post to the wall'}
@@ -25,12 +23,14 @@ export function NewPostForm() {
     const [fileName, setFileName] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
+    const [pending, setPending] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const dragDepth = useRef(0);
 
     async function submitUrl(formData: FormData) {
         setUploadError(null);
+        setPending(true);
         try {
             const result = await uploadImageUrlAction(formData);
             if (result?.error) setUploadError(result.error);
@@ -43,11 +43,14 @@ export function NewPostForm() {
                 return;
             }
             setUploadError(error instanceof Error ? error.message : 'We couldn\'t post that photo URL.');
+        } finally {
+            setPending(false);
         }
     }
 
     async function submitFile(formData: FormData) {
         setUploadError(null);
+        setPending(true);
         try {
             const result = await uploadImageAction(formData);
             if (result?.error) setUploadError(result.error);
@@ -60,6 +63,8 @@ export function NewPostForm() {
                 return;
             }
             setUploadError(error instanceof Error ? error.message : 'We couldn\'t post that photo.');
+        } finally {
+            setPending(false);
         }
     }
 
@@ -203,7 +208,7 @@ export function NewPostForm() {
                         <span className="font-normal text-[#71523c]">Mention your school, campus, neighborhood, or student routine for a more specific caption.</span>
                     </label>
                     {uploadError && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{uploadError}</p>}
-                    <SubmitButton disabled={!fileName} />
+                    <SubmitButton disabled={!fileName} pending={pending} />
                 </form>
             ) : (
                 <form onSubmit={async (event) => {
@@ -237,7 +242,7 @@ export function NewPostForm() {
                         <span className="font-normal text-[#71523c]">Mention your school, campus, neighborhood, or student routine for a more specific caption.</span>
                     </label>
                     {uploadError && <p role="alert" className="rounded-lg bg-[#ffe0cf] p-3 text-sm text-[#8d301a]">{uploadError}</p>}
-                    <SubmitButton />
+                    <SubmitButton pending={pending} />
                 </form>
             )}
         </div>
